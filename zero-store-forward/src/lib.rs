@@ -14,6 +14,6 @@ pub mod envelope;
 pub mod error;
 pub mod pow;
 
-pub use envelope::{decrypt_outer_for_relay, ZsfEnvelope, SealedSenderInner};
+pub use envelope::{decrypt_inner, decrypt_outer_for_relay, ZsfEnvelope, SealedSenderInner};
 pub use error::ZsfError;
 pub use pow::{ProofOfWork, verify_pow};

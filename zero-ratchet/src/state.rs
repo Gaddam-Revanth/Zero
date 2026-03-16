@@ -16,12 +16,15 @@ use zero_crypto::{
 const MAX_SKIP: usize = 1000;
 
 /// Initialization parameters for a new ZR session.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct SessionInit {
     /// The master secret from ZKX (64 bytes).
     pub master_secret: Vec<u8>,
     /// Whether this side is the initiator (Alice) or responder (Bob).
     pub is_initiator: bool,
+    /// Local DH ratchet keypair to start the session with.
+    /// This MUST be freshly generated per session.
+    pub local_dh: X25519Keypair,
     /// Remote party's initial ratchet public key (exchanged at session start).
     pub remote_dh_pub: X25519PublicKey,
 }
@@ -79,6 +82,11 @@ pub struct RatchetMessage {
 }
 
 impl RatchetSession {
+    /// Return our current DH ratchet public key.
+    pub fn dh_pub(&self) -> X25519PublicKey {
+        self.dhs_pub.clone()
+    }
+
     /// Create a new ZR session.
     pub fn new(init: SessionInit) -> Result<Self, RatchetError> {
         if init.master_secret.len() != 64 {
@@ -88,9 +96,8 @@ impl RatchetSession {
             )));
         }
 
-        let kp = X25519Keypair::generate();
-        let dhs_secret = kp.secret_key();
-        let dhs_pub = kp.public_key();
+        let dhs_secret = init.local_dh.secret_key();
+        let dhs_pub = init.local_dh.public_key();
 
         // Initial shared secret using the initial ratchet DH keys.
         // This is required to seed sending/receiving chains deterministically for both sides.
@@ -316,43 +323,18 @@ mod tests {
         let mut alice = RatchetSession::new(SessionInit {
             master_secret: master.clone(),
             is_initiator: true,
+            local_dh: alice_kp,
             remote_dh_pub: bob_kp.public_key(),
         })
         .expect("alice init");
-        // Make deterministic: use our chosen DH keypair for this test
-        alice.dhs_secret = alice_kp.secret_key();
-        alice.dhs_pub = alice_kp.public_key();
-        // Recompute initial chains/header keys for this deterministic keypair
-        {
-            let shared0 = x25519_diffie_hellman(&alice.dhs_secret, &bob_kp.public_key()).unwrap();
-            let (rk1, ck_pair) = kdf_rk(&master, &shared0.0).unwrap();
-            alice.rk = rk1;
-            alice.cks = Some(ck_pair.0);
-            alice.ckr = Some(ck_pair.1);
-            let prk_hdr = hkdf_extract(&alice.rk, b"ZERO-ZR-v1-header");
-            alice.hks = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeySend, 32).unwrap();
-            alice.hkr = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeyRecv, 32).unwrap();
-        }
 
         let mut bob = RatchetSession::new(SessionInit {
             master_secret: master_for_bob.clone(),
             is_initiator: false,
-            remote_dh_pub: alice_kp.public_key(),
+            local_dh: bob_kp,
+            remote_dh_pub: alice.dhs_pub.clone(),
         })
         .expect("bob init");
-        bob.dhs_secret = bob_kp.secret_key();
-        bob.dhs_pub = bob_kp.public_key();
-        {
-            let shared0 = x25519_diffie_hellman(&bob.dhs_secret, &alice_kp.public_key()).unwrap();
-            let (rk1, ck_pair) = kdf_rk(&master_for_bob, &shared0.0).unwrap();
-            bob.rk = rk1;
-            // responder role: sending=ck_recv, receiving=ck_send
-            bob.cks = Some(ck_pair.1);
-            bob.ckr = Some(ck_pair.0);
-            let prk_hdr = hkdf_extract(&bob.rk, b"ZERO-ZR-v1-header");
-            bob.hks = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeyRecv, 32).unwrap();
-            bob.hkr = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeySend, 32).unwrap();
-        }
 
         // Use consistent associated data (e.g., canonical header bytes in real protocol)
         let ad = b"ad";
