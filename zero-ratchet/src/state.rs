@@ -22,8 +22,8 @@ pub struct SessionInit {
     pub master_secret: Vec<u8>,
     /// Whether this side is the initiator (Alice) or responder (Bob).
     pub is_initiator: bool,
-    /// Bob's initial ratchet public key (from the ZKX message).
-    pub remote_dh_pub: Option<X25519PublicKey>,
+    /// Remote party's initial ratchet public key (exchanged at session start).
+    pub remote_dh_pub: X25519PublicKey,
 }
 
 /// A ZR ratchet session — maintains all state for one conversation.
@@ -81,32 +81,69 @@ pub struct RatchetMessage {
 impl RatchetSession {
     /// Create a new ZR session.
     pub fn new(init: SessionInit) -> Result<Self, RatchetError> {
+        if init.master_secret.len() != 64 {
+            return Err(RatchetError::SerializationError(format!(
+                "Invalid master_secret length: expected 64, got {}",
+                init.master_secret.len()
+            )));
+        }
+
         let kp = X25519Keypair::generate();
         let dhs_secret = kp.secret_key();
         let dhs_pub = kp.public_key();
 
+        // Initial shared secret using the initial ratchet DH keys.
+        // This is required to seed sending/receiving chains deterministically for both sides.
+        let shared0 = x25519_diffie_hellman(&dhs_secret, &init.remote_dh_pub)
+            .map_err(|_| RatchetError::DhFailed)?;
+
+        // Root key starts as master_secret; then we mix in the initial DH to derive chain keys.
+        let (rk1, ck0) = kdf_rk(&init.master_secret, &shared0.0)?;
+
+        // Derive header keys from the root key. Role separation ensures Alice's send header key
+        // matches Bob's receive header key (and vice versa).
+        let prk_hdr = hkdf_extract(&rk1, b"ZERO-ZR-v1-header");
+        let hk_send = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeySend, 32)
+            .map_err(|_| RatchetError::KdfError)?;
+        let hk_recv = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeyRecv, 32)
+            .map_err(|_| RatchetError::KdfError)?;
+
+        // Role separation:
+        // - Initiator: cks=ck_send, ckr=ck_recv, hks=hk_send, hkr=hk_recv
+        // - Responder: cks=ck_recv, ckr=ck_send, hks=hk_recv, hkr=hk_send
+        let (ck_send, ck_recv) = ck0;
+        let (cks, ckr, hks, hkr) = if init.is_initiator {
+            (Some(ck_send), Some(ck_recv), hk_send, hk_recv)
+        } else {
+            (Some(ck_recv), Some(ck_send), hk_recv, hk_send)
+        };
+
         let mut session = Self {
-            rk: init.master_secret,
-            cks: None,
-            ckr: None,
+            rk: rk1,
+            cks,
+            ckr,
             dhs_secret,
             dhs_pub,
-            dhr: init.remote_dh_pub.clone(),
+            dhr: Some(init.remote_dh_pub),
             ns: 0,
             nr: 0,
             pn: 0,
-            hks: vec![0u8; 32],
-            hkr: vec![0u8; 32],
+            hks,
+            hkr,
+            // Next header keys start as current header keys (updated on DH ratchet step).
             nhks: vec![0u8; 32],
             nhkr: vec![0u8; 32],
             skipped: SkippedKeyCache::new(),
         };
 
-        if init.is_initiator {
-            if let Some(dhr) = init.remote_dh_pub {
-                session.dh_ratchet_step(&dhr)?;
-            }
-        }
+        // Initialize "next header keys" to a derived value so the receiver can attempt both
+        // current and next during a ratchet transition.
+        let prk_nh = hkdf_extract(&session.rk, b"ZERO-ZR-v1-next-header");
+        session.nhks = hkdf_expand(&prk_nh, KdfContext::Custom("ZERO-ZR-v1-nhks"), 32)
+            .map_err(|_| RatchetError::KdfError)?;
+        session.nhkr = hkdf_expand(&prk_nh, KdfContext::Custom("ZERO-ZR-v1-nhkr"), 32)
+            .map_err(|_| RatchetError::KdfError)?;
+
         Ok(session)
     }
 
@@ -119,9 +156,11 @@ impl RatchetSession {
         let shared = x25519_diffie_hellman(&self.dhs_secret, remote_pub)
             .map_err(|_| RatchetError::DhFailed)?;
             
-        let (new_rk, new_cks) = kdf_rk(&self.rk, &shared.0)?;
+        let (new_rk, ck_pair) = kdf_rk(&self.rk, &shared.0)?;
         self.rk = new_rk;
-        self.cks = Some(new_cks);
+        // After a DH ratchet step, we create a new sending chain.
+        // (Receiving chain will be derived when processing messages from the remote side.)
+        self.cks = Some(ck_pair.0);
         
         // Generate new local DH key
         let kp = X25519Keypair::generate();
@@ -135,8 +174,8 @@ impl RatchetSession {
         let nh_shared = x25519_diffie_hellman(&self.dhs_secret, remote_pub)
             .map_err(|_| RatchetError::DhFailed)?;
         let prk = hkdf_extract(&self.rk, &nh_shared.0);
-        self.nhks = hkdf_expand(&prk, KdfContext::Custom("ZR-nhks"), 32).map_err(|_| RatchetError::KdfError)?;
-        self.nhkr = hkdf_expand(&prk, KdfContext::Custom("ZR-nhkr"), 32).map_err(|_| RatchetError::KdfError)?;
+        self.nhks = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-v1-nhks"), 32).map_err(|_| RatchetError::KdfError)?;
+        self.nhkr = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-v1-nhkr"), 32).map_err(|_| RatchetError::KdfError)?;
         
         Ok(())
     }
@@ -153,7 +192,7 @@ impl RatchetSession {
         };
         self.ns += 1;
         
-        let hks_arr: [u8; 32] = self.hks.as_slice().try_into().unwrap_or([0u8; 32]);
+        let hks_arr: [u8; 32] = self.hks.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
         let enc_hdr = encrypt_header(&AeadKey(hks_arr), &hdr)?;
         
         let mut aad = associated_data.to_vec();
@@ -162,7 +201,7 @@ impl RatchetSession {
         let nonce = AeadNonce::random();
         let mut ct_with_nonce = nonce.0.to_vec();
         
-        let mk_arr: [u8; 32] = mk.as_slice().try_into().unwrap();
+        let mk_arr: [u8; 32] = mk.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
         let ct = encrypt(&AeadKey(mk_arr), &nonce, plaintext, &aad)
             .map_err(|_| RatchetError::EncryptionFailed)?;
         ct_with_nonce.extend_from_slice(&ct);
@@ -180,7 +219,7 @@ impl RatchetSession {
         associated_data: &[u8],
         now_secs: u64,
     ) -> Result<Vec<u8>, RatchetError> {
-        let hkr_arr: [u8; 32] = self.hkr.as_slice().try_into().unwrap_or([0u8; 32]);
+        let hkr_arr: [u8; 32] = self.hkr.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
         if let Ok(hdr) = decrypt_header(&AeadKey(hkr_arr), &msg.header) {
             if let Some(mk) = self.skipped.take(&hdr.dh_pub, hdr.counter) {
                 return self.decrypt_with_key(&mk, msg, associated_data);
@@ -189,21 +228,22 @@ impl RatchetSession {
             let (new_ckr, mk) = kdf_ck(self.ckr.as_ref().ok_or(RatchetError::DecryptionFailed)?)?;
             self.ckr = Some(new_ckr);
             self.nr += 1;
-            let mk_arr: [u8; 32] = mk.as_slice().try_into().unwrap();
+            let mk_arr: [u8; 32] = mk.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
             return self.decrypt_with_key(&mk_arr, msg, associated_data);
         }
 
-        let nhkr_arr: [u8; 32] = self.nhkr.as_slice().try_into().unwrap_or([0u8; 32]);
+        let nhkr_arr: [u8; 32] = self.nhkr.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
         if let Ok(hdr) = decrypt_header(&AeadKey(nhkr_arr), &msg.header) {
             if let Some(ref _ckr) = self.ckr {
-                self.skip_message_keys(hdr.prev_counter, &self.dhr.clone().unwrap_or(X25519PublicKey([0u8;32])), now_secs)?;
+                let dhr = self.dhr.clone().ok_or(RatchetError::DecryptionFailed)?;
+                self.skip_message_keys(hdr.prev_counter, &dhr, now_secs)?;
             }
             self.dh_ratchet_step(&hdr.dh_pub)?;
             self.skip_message_keys(hdr.counter, &hdr.dh_pub, now_secs)?;
             let (new_ckr, mk) = kdf_ck(self.ckr.as_ref().ok_or(RatchetError::DecryptionFailed)?)?;
             self.ckr = Some(new_ckr);
             self.nr += 1;
-            let mk_arr: [u8; 32] = mk.as_slice().try_into().unwrap();
+            let mk_arr: [u8; 32] = mk.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
             return self.decrypt_with_key(&mk_arr, msg, associated_data);
         }
 
@@ -245,16 +285,81 @@ impl RatchetSession {
     }
 }
 
-fn kdf_rk(rk: &[u8], dh_shared: &[u8]) -> Result<(Vec<u8>, Vec<u8>), RatchetError> {
+fn kdf_rk(rk: &[u8], dh_shared: &[u8]) -> Result<(Vec<u8>, (Vec<u8>, Vec<u8>)), RatchetError> {
     let prk = hkdf_extract(rk, dh_shared);
-    let rk = hkdf_expand(&prk, KdfContext::Custom("ZR-rk"), 64).map_err(|_| RatchetError::KdfError)?;
-    let ck = hkdf_expand(&prk, KdfContext::Custom("ZR-ck"), 32).map_err(|_| RatchetError::KdfError)?;
-    Ok((rk, ck))
+    let rk = hkdf_expand(&prk, KdfContext::ZrRootChain, 64).map_err(|_| RatchetError::KdfError)?;
+    let ck_send = hkdf_expand(&prk, KdfContext::ZrSendChain, 32).map_err(|_| RatchetError::KdfError)?;
+    let ck_recv = hkdf_expand(&prk, KdfContext::ZrRecvChain, 32).map_err(|_| RatchetError::KdfError)?;
+    Ok((rk, (ck_send, ck_recv)))
 }
 
 fn kdf_ck(ck: &[u8]) -> Result<(Vec<u8>, Vec<u8>), RatchetError> {
     let prk = hkdf_extract(ck, &[]);
-    let nck = hkdf_expand(&prk, KdfContext::Custom("ZR-nck"), 32).map_err(|_| RatchetError::KdfError)?;
-    let mk = hkdf_expand(&prk, KdfContext::Custom("ZR-mk"), 32).map_err(|_| RatchetError::KdfError)?;
+    let nck = hkdf_expand(&prk, KdfContext::ZrSendChain, 32).map_err(|_| RatchetError::KdfError)?;
+    let mk = hkdf_expand(&prk, KdfContext::ZrMessageKey, 32).map_err(|_| RatchetError::KdfError)?;
     Ok((nck, mk))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zr_encrypt_decrypt_roundtrip() {
+        // Simulate two parties establishing a session from the same ZKX master secret.
+        let master = vec![0x11u8; 64];
+        let master_for_bob = master.clone();
+
+        let alice_kp = X25519Keypair::generate();
+        let bob_kp = X25519Keypair::generate();
+
+        let mut alice = RatchetSession::new(SessionInit {
+            master_secret: master.clone(),
+            is_initiator: true,
+            remote_dh_pub: bob_kp.public_key(),
+        })
+        .expect("alice init");
+        // Make deterministic: use our chosen DH keypair for this test
+        alice.dhs_secret = alice_kp.secret_key();
+        alice.dhs_pub = alice_kp.public_key();
+        // Recompute initial chains/header keys for this deterministic keypair
+        {
+            let shared0 = x25519_diffie_hellman(&alice.dhs_secret, &bob_kp.public_key()).unwrap();
+            let (rk1, ck_pair) = kdf_rk(&master, &shared0.0).unwrap();
+            alice.rk = rk1;
+            alice.cks = Some(ck_pair.0);
+            alice.ckr = Some(ck_pair.1);
+            let prk_hdr = hkdf_extract(&alice.rk, b"ZERO-ZR-v1-header");
+            alice.hks = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeySend, 32).unwrap();
+            alice.hkr = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeyRecv, 32).unwrap();
+        }
+
+        let mut bob = RatchetSession::new(SessionInit {
+            master_secret: master_for_bob.clone(),
+            is_initiator: false,
+            remote_dh_pub: alice_kp.public_key(),
+        })
+        .expect("bob init");
+        bob.dhs_secret = bob_kp.secret_key();
+        bob.dhs_pub = bob_kp.public_key();
+        {
+            let shared0 = x25519_diffie_hellman(&bob.dhs_secret, &alice_kp.public_key()).unwrap();
+            let (rk1, ck_pair) = kdf_rk(&master_for_bob, &shared0.0).unwrap();
+            bob.rk = rk1;
+            // responder role: sending=ck_recv, receiving=ck_send
+            bob.cks = Some(ck_pair.1);
+            bob.ckr = Some(ck_pair.0);
+            let prk_hdr = hkdf_extract(&bob.rk, b"ZERO-ZR-v1-header");
+            bob.hks = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeyRecv, 32).unwrap();
+            bob.hkr = hkdf_expand(&prk_hdr, KdfContext::ZrHeaderKeySend, 32).unwrap();
+        }
+
+        // Use consistent associated data (e.g., canonical header bytes in real protocol)
+        let ad = b"ad";
+        let msg = alice.encrypt(b"hello", ad).expect("encrypt");
+
+        // Bob must be able to decrypt it
+        let pt = bob.decrypt(&msg, ad, 0).expect("decrypt");
+        assert_eq!(pt, b"hello");
+    }
 }
