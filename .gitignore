@@ -13,6 +13,10 @@
 *_error.txt
 *_output.log
 *_check*.txt
+workspace_errors*.txt
+*errors*.txt
+**/check_results.json
+**/metadata.json
 err.txt
 test_final.txt
 ml_test.rs
