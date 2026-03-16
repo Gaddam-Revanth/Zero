@@ -6,6 +6,7 @@ members = [
     "zero-handshake",
     "zero-ratchet",
     "zero-dht",
+    "zero-wire",
     "zero-transport",
     "zero-relay",
     "zero-store-forward",

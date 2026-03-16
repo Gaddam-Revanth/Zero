@@ -9,6 +9,9 @@
 use crate::error::TransportError;
 use quinn::{Connection, Endpoint};
 use std::net::SocketAddr;
+use zero_wire::{Packet, PacketHeader};
+use bytes::Bytes;
+use tokio::io::AsyncWriteExt;
 
 /// Protocol Stream IDs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,5 +46,37 @@ impl QuicTransport {
             .map_err(|e| TransportError::ConnectionFailed(e.to_string()))?
             .await
             .map_err(|e| TransportError::ConnectionFailed(e.to_string()))
+    }
+
+    /// Send a framed ZERO packet on a new bidirectional stream.
+    pub async fn send_packet(
+        conn: &Connection,
+        header: PacketHeader,
+        body: Bytes,
+    ) -> Result<(), TransportError> {
+        let pkt = Packet { header, body };
+        let bytes = pkt.encode_v1().map_err(|e| TransportError::StreamError(e.to_string()))?;
+        let (mut send, mut recv) = conn
+            .open_bi()
+            .await
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+        send.write_all(&bytes)
+            .await
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+        send.finish().map_err(|e| TransportError::StreamError(e.to_string()))?;
+        // Drain peer response if any (for future use)
+        let _ = recv.read_to_end(usize::MAX).await;
+        Ok(())
+    }
+
+    /// Receive a single framed ZERO packet from an incoming bidirectional stream.
+    pub async fn recv_packet(
+        mut recv: quinn::RecvStream,
+    ) -> Result<Packet, TransportError> {
+        let bytes = recv
+            .read_to_end((zero_wire::header::HEADER_LEN_V1 as usize) + (zero_wire::header::MAX_BODY_LEN as usize))
+            .await
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+        Packet::decode_v1(&bytes).map_err(|e| TransportError::StreamError(e.to_string()))
     }
 }

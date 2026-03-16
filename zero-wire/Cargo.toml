@@ -1,0 +1,21 @@
+[package]
+name        = "zero-wire"
+description = "ZERO Protocol — wire framing (universal header, AAD binding, limits, replay tokens)"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+bytes      = { workspace = true }
+serde      = { workspace = true }
+thiserror  = { workspace = true }
+dashmap    = { workspace = true }
+chrono     = { workspace = true }
+rand       = { workspace = true }
+blake2     = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
