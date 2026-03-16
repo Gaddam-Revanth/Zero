@@ -417,13 +417,109 @@ ZERO Protocol uses CBOR (Concise Binary Object Representation, RFC 8949) as the 
 
 20.2  Universal Packet Header
 
-WIRE FORMAT NOTE
-SECTION 20 is currently incomplete. For security, v1.0 MUST define:
-- canonical CBOR encoding rules (to prevent signature/MAC malleability)
-- exact AAD values for each encrypted message type
-- maximum sizes per packet type to prevent memory DoS
+20.2.1  Canonical CBOR Rules (REQUIRED)
+To prevent signature/MAC malleability and cross-implementation ambiguity, all CBOR used in
+ZERO Protocol v1.0 MUST follow the Canonical CBOR rules from RFC 8949:
+- Use the shortest encoding for integers and lengths.
+- Map keys MUST be in bytewise lexicographic order by their encoded form.
+- No indefinite-length items are permitted on the wire (no indefinite arrays/maps/strings).
+- Any tag usage MUST be explicitly specified per message type; otherwise tags are forbidden.
+- Floating-point values are forbidden in protocol messages.
+
+Implementations MUST reject non-canonical CBOR for any signed or authenticated structure.
+
+20.2.2  Universal Header (REQUIRED)
+Every ZERO packet (regardless of transport: QUIC stream, TCP/TLS, relay hop) MUST begin with
+a small, fixed-length universal header, followed by a payload whose format depends on type.
+
+Header fields (all unsigned, network byte order / big-endian):
+- magic[4]        = 0x5A 0x45 0x52 0x4F   ("ZERO")
+- version_major   = u16
+- version_minor   = u16
+- packet_type     = u16  (registry in 20.3)
+- flags           = u16  (bitfield; see 20.2.4)
+- header_len      = u16  (bytes; MUST equal 32 for v1.0)
+- body_len        = u32  (bytes; MUST be <= MAX_BODY_LEN)
+- sender_node_id  = [u8;32]  (ZDHT NodeId; may be zero for sealed-sender modes)
+- receiver_node_id= [u8;32]  (ZDHT NodeId; MUST be set for routable packets)
+
+Note: When sealed-sender privacy is required (e.g., ZSF inner payload), sender_node_id MUST be
+all-zero in the universal header and identity is carried only inside authenticated inner layers.
+
+20.2.3  Size Limits (REQUIRED)
+Implementations MUST enforce hard limits before allocating or parsing:
+- MAX_BODY_LEN            = 1_048_576  (1 MiB) for generic packets
+- MAX_HANDSHAKE_BODY_LEN  = 262_144    (256 KiB) for ZKX/Noise messages (includes PQ material)
+- MAX_CONTROL_BODY_LEN    = 65_535     (64 KiB) for control packets
+- MAX_TEXT_BODY_LEN       = 16_384     (16 KiB) for single text messages (post-decrypt)
+- MAX_HEADER_ENC_LEN      = 512        (bytes) for encrypted headers
+
+Any packet exceeding its limit MUST be rejected without detailed error information.
+
+20.2.4  Flags (REQUIRED)
+Flags bitfield:
+- bit 0: sealed_sender      (sender_node_id is all-zero; identity is inner-only)
+- bit 1: has_replay_token   (body begins with replay_token)
+- bit 2: is_retransmit      (transport-level retransmit hint)
+- bit 3: requires_pow       (relay/storage must verify PoW)
+- bit 4: reserved
+- bits 5-15: reserved (MUST be zero in v1.0; reject otherwise)
+
+20.2.5  Replay Tokens (REQUIRED)
+Packets that can be replayed to cause side-effects (ZKX init, ZSF store, group membership
+events, key updates) MUST include a 16-byte replay token:
+
+replay_token = random(16)
+
+Receivers/relays MUST maintain a bounded replay cache keyed by:
+- (receiver_node_id, packet_type, replay_token)
+for a configurable window (default 24 hours for control; TTL for ZSF envelopes).
+
+20.2.6  AAD Binding Rules (REQUIRED)
+All AEAD-encrypted structures MUST bind the universal header fields as Additional Authenticated
+Data (AAD) so ciphertext cannot be replayed across types/versions/recipients.
+
+Define:
+AAD = canonical_cbor({
+  "magic": "ZERO",
+  "v": [version_major, version_minor],
+  "type": packet_type,
+  "flags": flags,
+  "sender": sender_node_id,
+  "receiver": receiver_node_id,
+  "body_len": body_len
+})
+
+For inner sealed-sender payloads, sender_node_id in AAD MUST be all-zero.
+
+20.2.7  Anti-DoS Requirements (REQUIRED)
+- Parsing must be streaming/constant-memory where possible (avoid buffering entire bodies when
+  not needed).
+- Any authentication failure MUST be constant-time w.r.t. secret keys.
+- Relays MUST enforce per-sender/per-receiver quotas (rate limits) even when sender is hidden:
+  use (source IP, receiver_node_id, PoW difficulty) heuristics.
 
 20.3  Packet Type Registry
+
+20.3.1  v1.0 Packet Types (INITIAL)
+- 0x0001 ZKX_NOISE_MSG1
+- 0x0002 ZKX_NOISE_MSG2
+- 0x0003 ZKX_NOISE_MSG3
+- 0x0004 ZKX_INIT (X3DH+PQ initiation payload)
+- 0x0010 ZR_MESSAGE (ratchet-encrypted message)
+- 0x0020 ZDHT_PING
+- 0x0021 ZDHT_FIND_RECORD_REQ
+- 0x0022 ZDHT_FIND_RECORD_RESP
+- 0x0030 ZSF_STORE_ENVELOPE
+- 0x0031 ZSF_FETCH_REQ
+- 0x0032 ZSF_FETCH_RESP
+- 0x0040 ZGP_EVENT
+- 0x0050 ZAV_SIGNAL
+- 0x0060 ZFT_OFFER
+- 0x0061 ZFT_CHUNK
+- 0x0062 ZFT_ACK
+
+All unknown packet types MUST be ignored (or rejected) without side effects.
 
 
 21.1  Feature & Security Comparison
