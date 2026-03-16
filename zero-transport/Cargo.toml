@@ -13,6 +13,7 @@ zero-identity = { path = "../zero-identity" }
 zero-wire     = { path = "../zero-wire" }
 quinn         = { workspace = true }
 rustls        = { workspace = true }
+rcgen         = { workspace = true }
 tokio         = { workspace = true }
 tokio-stream  = { workspace = true }
 futures       = { workspace = true }

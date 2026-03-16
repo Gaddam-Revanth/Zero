@@ -41,6 +41,7 @@ rand_core       = { version = "0.6" }
 getrandom       = { version = "0.2",   features = ["js"] }
 zeroize         = { version = "1.8",   features = ["derive", "zeroize_derive"] }
 subtle          = { version = "2.5" }
+rcgen           = { version = "0.13" }
 
 # --- Serialization ---
 serde           = { version = "1",     features = ["derive"] }
