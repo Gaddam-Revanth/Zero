@@ -3088,6 +3088,21 @@ dependencies = [
  "tracing",
  "zero-crypto",
  "zero-identity",
+ "zero-wire",
+]
+
+[[package]]
+name = "zero-wire"
+version = "1.0.0"
+dependencies = [
+ "blake2",
+ "bytes",
+ "chrono",
+ "dashmap",
+ "proptest",
+ "rand 0.8.5",
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
