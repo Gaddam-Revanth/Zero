@@ -1,0 +1,23 @@
+[package]
+name        = "zero-ratchet"
+description = "ZERO Protocol — ZR: Double Ratchet with header encryption"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto   = { path = "../zero-crypto" }
+zero-identity = { path = "../zero-identity" }
+serde         = { workspace = true }
+serde_cbor    = { workspace = true }
+zeroize       = { workspace = true }
+rand          = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+dashmap       = { workspace = true }
+chrono        = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

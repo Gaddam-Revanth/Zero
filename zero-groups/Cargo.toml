@@ -1,0 +1,26 @@
+[package]
+name        = "zero-groups"
+description = "ZERO Protocol — ZGP: Megolm-inspired O(1) group messaging"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto        = { path = "../zero-crypto" }
+zero-identity      = { path = "../zero-identity" }
+zero-ratchet       = { path = "../zero-ratchet" }
+zero-store-forward = { path = "../zero-store-forward" }
+serde              = { workspace = true }
+serde_cbor         = { workspace = true }
+zeroize            = { workspace = true }
+rand               = { workspace = true }
+thiserror          = { workspace = true }
+tracing            = { workspace = true }
+dashmap            = { workspace = true }
+uuid               = { workspace = true }
+chrono             = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

@@ -1,0 +1,467 @@
+
+
+
+
+TABLE OF CONTENTS
+
+PART 1 — aTox App: Complete Breakdown
+  1.1  Project Identity & History
+  1.2  Module Architecture
+  1.3  Build System (Gradle + Bazel)
+  1.4  Feature Set (Complete)
+  1.5  Permissions & Privacy
+  1.6  Version History & Changelogs
+PART 2 — Tox Protocol: Full Technical Specification
+  2.1  Origins & Philosophy
+  2.2  The Tox ID Format
+  2.3  NaCl / libsodium Cryptography
+  2.4  Protocol Stack: All 8 Layers
+  2.5  DHT (Distributed Hash Table)
+  2.6  Onion Routing
+  2.7  NAT Traversal & Hole-Punching
+  2.8  TCP Relays
+  2.9  net_crypto (Secure Session)
+  2.10  Messenger Layer
+  2.11  Full Connection Flow
+  2.12  Known Weaknesses & Vulnerabilities
+  2.13  Project Governance & Status
+PART 3 — Reference Protocols for Custom Design
+  3.1  Signal Protocol (X3DH + Double Ratchet + PQXDH)
+  3.2  Noise Protocol Framework
+  3.3  Matrix / Olm / Megolm
+  3.4  XMPP + OMEMO
+  3.5  libp2p
+  3.6  MLS (Messaging Layer Security)
+PART 4 — Post-Quantum Cryptography (ML-KEM / CRYSTALS-Kyber)
+PART 5 — Your Custom 'Nexus Protocol' — Full Design
+  5.1  Goals & Design Philosophy
+  5.2  NexusID Identity System
+  5.3  Full Protocol Stack (All Layers)
+  5.4  Nexus Key Exchange (NKX)
+  5.5  Nexus Ratchet (NR)
+  5.6  Nexus DHT (NDHT)
+  5.7  Offline Delivery (NSF)
+  5.8  Group Messaging (NGP)
+  5.9  Security Properties Table
+PART 6 — Building Your App: Architecture & Features
+  6.1  Tech Stack
+  6.2  Module Architecture
+  6.3  Feature Roadmap
+  6.4  Global Language Support
+PART 7 — Protocol Comparison Matrix
+PART 8 — Legal, Licensing & Compliance
+PART 9 — Development Roadmap
+PART 10 — Summary & Action Plan
+
+
+1.1  Project Identity & History
+aTox is a free, open-source Android messaging application built on the Tox peer-to-peer protocol. Developed by the developer team operating under the alias 'evilcorpltd', it was first committed to GitHub in May 2019. As of March 2026, it stands at version 0.8.0 (released November 10, 2024), with 458 GitHub stars and 75 forks, and receives approximately 6,700 downloads per month on Google Play.
+
+
+The project took an estimated 4 years of development effort (COCOMO model). The codebase is primarily Kotlin with native C for the toxcore bindings. It uses tox4j, a JVM binding to the TokTok/c-toxcore C library.
+
+1.2  Module Architecture
+aTox follows a clean, three-layer modular Android architecture. Each module has a single responsibility, making the code easy to test and reason about:
+
+
+The foreground service architecture is critical for mobile Tox: Android aggressively kills background processes, so aTox runs a permanent foreground service (with notification) to keep the Tox network connection alive and receive messages in real time.
+
+1.3  Build System: Gradle + Bazel
+aTox uses a dual build system, which is unusual but necessary because of the native code dependency:
+Gradle (build.gradle.kts): Standard Android build system for the app, domain, and core modules. Uses Kotlin DSL.
+Bazel: Used exclusively for building tox4j — the JVM bindings to the C toxcore library. Bazel excels at hermetic, reproducible cross-compilation.
+
+Cross-compiling tox4j requires building four separate native shared libraries (.so files), one per Android ABI:
+
+1.4  Complete Feature Set
+
+1.5  Permissions & Privacy
+▸  Android Permissions Required
+FOREGROUND_SERVICE — Keeps Tox network connection alive; Android 14+ requires FOREGROUND_SERVICE_DATA_SYNC category
+INTERNET + CHANGE_NETWORK_STATE — Core networking
+CAMERA — Video calls
+RECORD_AUDIO — Voice calls and voice messages
+MODIFY_AUDIO_SETTINGS — Volume routing, speaker/earpiece switching during calls
+RECEIVE_BOOT_COMPLETED — Auto-start the service on device boot
+
+
+1.6  Version History & Changelogs
+
+
+
+2.1  Origins & Philosophy
+Tox was born on June 23, 2013, when a developer named 'irungentoo' pushed the first commit to GitHub. The motivation was direct: on June 16, 2013, news broke that Skype had provided the NSA with backdoor access to user communications before Microsoft's acquisition, which itself followed Edward Snowden's revelations. This sparked discussion on the anonymous imageboard 4chan about building a secure, NSA-proof replacement for Skype.
+
+
+The project gained massive traction quickly: by August 15, 2013, it was #5 on GitHub's trending list. It was accepted into Google Summer of Code in both 2014 and 2015. In 2015, a financial scandal involving the Tox Foundation (sole board member misappropriated GSoC funds for college tuition) caused a split. The TokTok Project fork (TokTok/c-toxcore) became the actively maintained successor — the codebase all modern clients, including aTox, build against. As of March 2026, the latest release is v0.2.21 (May 15, 2025).
+
+2.2  The Tox ID Format
+Every Tox user is identified by a 76-character hexadecimal Tox ID (38 bytes total):
+
+
+
+2.3  NaCl / libsodium Cryptography
+Tox uses the NaCl cryptographic library (accessed via libsodium) exclusively. NaCl was designed by cryptographer Daniel J. Bernstein to make secure cryptography practical and difficult to misuse. Tox uses the following specific primitives:
+
+
+
+2.4  Protocol Stack Overview
+Tox is organized into 8 layers. Understanding each layer is essential for building a successor:
+
+2.5  DHT (Distributed Hash Table)
+Architecture
+The Tox DHT is a Kademlia-inspired distributed hash table, modified significantly from BitTorrent's BEP-5 design. Every Tox node participates in the DHT. Key design principles:
+Node Identity: Each node has an ephemeral DHT key pair (the DHT Public Key is the 'address'). This key pair is renewed every time the Tox instance restarts, preventing long-term tracking of nodes.
+XOR Distance Metric: Distance between two nodes = XOR of their DHT public keys, interpreted as a big-endian integer. This defines 'closeness' in the DHT namespace.
+Close List: 8 nodes closest to your own DHT key, organized in a k-bucket structure by bit-prefix index. These are your immediate neighbors in the DHT.
+Friends List: For each friend, 8 DHT nodes closest to that friend's public key are tracked. Used to locate the friend.
+Refresh: Nodes are pinged every 60 seconds. Nodes that fail to respond are removed.
+
+DHT Packet Types
+Ping Request / Ping Response: Basic liveness check; also used to add nodes to routing tables
+Nodes Request / Nodes Response: Ask a node for k closest nodes to a given public key; response includes up to 4 closest known nodes
+DHT Request Packet: Encapsulates DHTPK packets and NAT ping packets for routing through the DHT
+
+LAN Discovery
+Tox automatically discovers other Tox users on the same local network by broadcasting UDP packets to 255.255.255.255 (IPv4 broadcast) and FF02::1 (IPv6 all-nodes multicast) on port 33445, every 10 seconds. This allows automatic peer connection on the same WiFi network without going through internet bootstrap nodes.
+
+Bootstrap Nodes
+Cold start problem: on first run, a Tox client has no DHT neighbors. It solves this by connecting to hard-coded (or user-configured) bootstrap nodes — stable servers with well-known DHT public keys that have been running for years. Bootstrap node operators volunteer their servers for the community.
+
+2.6  Onion Routing
+Tox uses onion routing specifically for the friend-finding process (DHT lookups for friends' DHT keys). The purpose is to prevent observers from determining who Alice is looking for — preventing correlation attacks that would link Tox IDs to real-world identities.
+
+How it Works
+Alice builds a 3-hop onion path. Hop 1 is chosen randomly; Hops 2 and 3 are chosen close to the target's DHT key.
+Each hop only knows its predecessor and successor — classic onion layering. Hop 1 sees Alice's IP. Hop 2 sees only Hop 1's IP. Hop 3 (closest to target) sees only Hop 2's IP.
+Alice sends onion announce requests through this path to locate where Bob's DHT key is currently registered in the network.
+Once Bob's DHT key is found, the onion path is also used to deliver the DHT Public Key announce data back to Alice.
+Each Tox instance generates a unique temporary keypair specifically for DHT connections at bootstrap time. This prevents nodes from tying DHT connections to identity keys.
+
+
+2.7  NAT Traversal & Hole-Punching
+Most users are behind NAT routers that block direct UDP connections. Tox implements UDP hole-punching to solve this:
+
+
+Hole-punching process: Alice and Bob both learn each other's IP:port from DHT nodes. Alice sends UDP pings to Bob's IP:port, and Bob does the same. NAT routers see the incoming ping and create a mapping, 'opening the hole.' Once one party receives the other's ping, the hole is open and normal UDP traffic can flow. NAT ping requests are sent every 3 seconds; holes time out after 6 seconds.
+
+2.8  TCP Relay Servers
+For users who cannot establish direct UDP connections (behind symmetric NAT, corporate firewalls, etc.), Tox supports TCP relay servers as a fallback:
+Connection to TCP relays is itself encrypted (TLS-like protection)
+Desired connections per peer: 3 relays (maximum: 6 relays per peer), to minimize load on relay servers
+A TCP connection in TCP_connections is defined as a connection to a peer through one or more TCP relays
+Once a relay connection is established, Tox continuously tries to upgrade to a direct UDP connection via hole-punching
+When hole-punching succeeds, traffic seamlessly migrates from TCP relay to direct UDP without interrupting the session
+Any Tox client can optionally run a TCP relay server — this is exposed via the toxcore API
+
+2.9  net_crypto (Secure Session Layer)
+net_crypto is the session management layer sitting between raw UDP/TCP transport and the Messenger. It provides reliable, ordered, encrypted delivery:
+Connection requires knowing both the friend's long-term public key AND their current DHT public key
+All packets use crypto_box authenticated encryption — integrity-guaranteed, never corrupted in transit
+Implements reliable delivery: packet reordering detection, retransmission for lost packets
+Session keys derived from an ECDH exchange using both parties' long-term keys and fresh ephemeral keys
+Provides perfect forward secrecy at the session level via ephemeral keys
+
+2.10  Messenger Layer
+The top layer orchestrates all user-visible features. The Messenger module also handles persistence:
+What Messenger Stores
+Long-term private key (your permanent Tox identity)
+Current NoSpam value
+Friends' public keys and any outgoing friend requests
+DHT nodes, TCP relays, and some onion nodes (for faster reconnection)
+Optional: usernames of friends, your own username, status messages, etc.
+
+File Transfer Protocol
+Files identified by a 32-byte file_id (e.g., SHA-256 hash of avatar image for deduplication)
+file_size = UINT64_MAX indicates unknown/streaming transfer (live streaming support)
+Transfer state: paused, active, cancelled — all synchronized between peers
+
+Audio/Video Calls
+Audio uses the Opus codec; video uses the VP8 codec. Tox does NOT use SIP for call signaling — it implements its own call control messages via the Messenger layer. Call state transitions (ringing, accepting, rejecting, ending) are all handled through toxav (the audio/video extension to toxcore).
+
+Group Chats
+Tox group chats add temporary friend_connection entries for each group member, meaning all members must be online simultaneously for reliable message delivery. This is the fundamental limitation of Tox's group chat design — there is no offline message storage.
+
+2.11  Complete Connection Flow: Alice ↔ Bob
+
+2.12  Known Weaknesses & Vulnerabilities
+
+
+2.13  Project Governance & Current Status
+Original repository (irungentoo/toxcore): Abandoned since October 2018. The original creator stepped away.
+TokTok/c-toxcore: The actively maintained fork by the TokTok Project. Latest: v0.2.21 (May 15, 2025).
+Rust rewrite: TokTok is simultaneously developing a Rust reference implementation (tox-rs). As of June 2023 it supports basic communication and bootstrap node operations but no clients use it yet.
+Handshake redesign: A community member began redesigning the cryptographic handshake using the Noise Protocol Framework in March 2023 — addressing the KCI vulnerability.
+
+
+
+3.1  Signal Protocol (X3DH + Double Ratchet + PQXDH)
+The Signal Protocol, developed by Open Whisper Systems, is the most rigorously analyzed end-to-end encryption protocol in widespread deployment. It is used by Signal, WhatsApp, Facebook Messenger secret chats, Google Messages RCS, and many others.
+
+▸  3.1.1  X3DH — Extended Triple Diffie-Hellman
+X3DH establishes a shared secret key between two parties who mutually authenticate each other based on public keys. Crucially, it is designed for asynchronous settings: one user (Bob) can be offline while Alice initiates the key agreement. This is the cornerstone of offline messaging support.
+
+Key Types Used in X3DH
+
+X3DH Key Agreement Process
+Alice performs 4 DH operations to compute the shared secret SK:
+DH1 = DH(IKa, SPKb) — Alice's identity key × Bob's signed prekey
+DH2 = DH(EKa, IKb) — Alice's ephemeral key × Bob's identity key
+DH3 = DH(EKa, SPKb) — Alice's ephemeral key × Bob's signed prekey
+DH4 = DH(EKa, OPKb) — Alice's ephemeral key × Bob's one-time prekey (if available)
+SK = HKDF(DH1 || DH2 || DH3 || DH4) — combining all 4 DH outputs via HKDF provides forward secrecy, mutual authentication, and cryptographic deniability.
+
+▸  3.1.2  Double Ratchet Algorithm
+After X3DH establishes the initial shared secret, the Double Ratchet manages all ongoing message encryption. It combines two ratchets:
+
+
+The combination: every message gets a unique key (forward secrecy from symmetric ratchet). After device compromise, future messages regain security once new DH values are exchanged (post-compromise security from DH ratchet). Each party maintains: root chain KDF key, sending chain KDF key, receiving chain KDF key. AEAD cipher: AES-256-CTR or ChaCha20-Poly1305 for message encryption; HMAC-SHA256 for authentication.
+
+▸  3.1.3  PQXDH — Post-Quantum Extension (2023)
+In 2023, Signal replaced X3DH with PQXDH (Post-Quantum Extended Diffie-Hellman) to address 'harvest now, decrypt later' attacks — adversaries recording encrypted traffic today to decrypt after quantum computers exist.
+PQXDH pairs the classical X25519 DH with ML-KEM (CRYSTALS-Kyber) key encapsulation
+An attacker must simultaneously defeat both the classical ECC layer AND the post-quantum KEM to break the handshake
+Implementation cost: only 1–3ms additional latency on mobile devices
+Signal also introduced SPQR (Sparse Post Quantum Ratchet) in 2024 for post-quantum forward secrecy in ongoing conversations
+
+3.2  Noise Protocol Framework
+The Noise Protocol Framework (designed by Trevor Perrin) is a toolkit for constructing bespoke secure handshake protocols based on Diffie-Hellman key exchange. It is used by WireGuard VPN (IKpsk2 pattern), WhatsApp (XX and IK patterns), Slack's Nebula overlay network, and others.
+
+How Noise Works
+A Noise protocol name encodes everything: Noise_XX_25519_ChaChaPoly_BLAKE2b specifies pattern=XX, DH=X25519, cipher=ChaCha20-Poly1305, hash=BLAKE2b. The framework defines a state machine: CipherState (encrypts/decrypts), SymmetricState (manages chaining key ck and transcript hash h), HandshakeState (orchestrates the pattern).
+
+Key Handshake Patterns
+
+
+3.3  Matrix Protocol / Olm / Megolm
+Matrix is a federated, decentralized communications protocol with over 115 million users on public servers as of 2024. It is deployed by governments of France (Tchap), Germany (schools, defense, healthcare), Sweden, and Luxembourg. It uses two distinct E2EE sub-protocols:
+
+
+Megolm uses a one-way AES-256 + HMAC-SHA-256 ratchet. The Megolm key is initialized with random data; each message advances the ratchet via a hash calculation, deriving AES-256 + HMAC-SHA-256 sub-keys for that message. Forward secrecy: sharing the current ratchet state lets a new member decrypt future messages but NOT past ones.
+
+
+3.4  XMPP + OMEMO
+XMPP (Extensible Messaging and Presence Protocol) is a 25-year-old federated protocol that powered WhatsApp's early infrastructure and Google Talk. OMEMO is its E2EE extension, implementing the Signal Protocol on top of XMPP.
+XMPP uses a rich extension system (XEPs — XMPP Enhancement Proposals) for feature standardization
+OMEMO (XEP-0384): Signal Protocol E2EE for XMPP — X3DH + Double Ratchet, same crypto as WhatsApp
+Message Carbons (XEP-0280): Multi-device message sync via server-side carbon copies
+MAM (Message Archive Management, XEP-0313): Server-side message storage for offline delivery
+XMPP is mature, battle-tested, and server-agnostic — anyone can run a server
+
+3.5  libp2p
+libp2p is a modular P2P networking stack developed by Protocol Labs, used in IPFS, Ethereum 2.0/Filecoin, and many other projects. It abstracts transport, peer identity, routing, and content routing:
+Transport Agnostic: TCP, UDP, WebRTC, QUIC, WebSockets, Tor — all supported as pluggable transports
+Peer Identity: Cryptographic peer IDs derived from public keys — similar concept to Tox IDs
+Peer Routing: Multiple DHT implementations (Kademlia, mDNS, etc.) for peer discovery
+Multiplexing: Multiple logical streams over a single connection (yamux/mplex protocols)
+PubSub: GossipSub protocol for efficient group messaging and topic subscriptions
+NAT traversal: AutoNAT, Circuit Relay, DCUTR (direct connection upgrade through relay) protocols built-in
+Android/iOS: Go and Rust implementations with mobile SDKs available
+
+3.6  MLS — Messaging Layer Security
+MLS (RFC 9420, published 2023) is an IETF standard for scalable end-to-end encrypted group messaging. It is being considered by Matrix as a replacement for Megolm:
+TreeKEM: MLS uses a binary tree structure for distributing group keys. Adding/removing a member only requires O(log n) messages instead of O(n).
+Continuous Group Key Agreement (CGKA): cryptographic group management with forward secrecy and post-compromise security
+Epoch-based: group state advances through epochs; each epoch has its own key material
+Formally verified: formally analyzed at INRIA; RFC process included extensive cryptographic review
+
+
+
+4.1  Why Post-Quantum Matters for Your App
+Quantum computers, if sufficiently large, can run Shor's algorithm to break Curve25519 (and all other elliptic curve cryptography) in polynomial time. While cryptographically-relevant quantum computers don't yet exist, 'harvest now, decrypt later' attacks are happening today: adversaries (typically nation-states) are recording encrypted traffic now, to decrypt once quantum computers become available. For a messaging app with long-lived communications, quantum resistance is not optional — it's necessary.
+
+4.2  NIST Post-Quantum Standardization (FIPS 203, 204, 205 — Finalized August 2024)
+After a 6-year public standardization process, NIST finalized three post-quantum cryptographic standards on August 14, 2024:
+
+
+
+4.3  How ML-KEM Works (Technical)
+ML-KEM is based on the Module Learning With Errors (ML-LWE) problem — a structured lattice variant that offers good performance and relatively small key/ciphertext sizes compared to other post-quantum schemes.
+
+The Core Math
+Given a matrix A (public), small secret s, and small error term e: t = A·s + e. Without the error, solving for s is trivial linear algebra. With the 'noisy' error, it becomes computationally infeasible for both classical and quantum computers — because the noise masks the exact location of the solution on the lattice grid. Quantum computers are not significantly better than classical computers at solving high-dimensional noisy lattice problems.
+
+ML-KEM Parameter Sizes
+
+For comparison: X25519 (Curve25519) public key is only 32 bytes, ciphertext 32 bytes. ML-KEM-768 keys are ~37× larger — this affects message sizes during the handshake but has negligible impact on ongoing message traffic (which uses symmetric keys derived from the KEM shared secret).
+
+Hybrid Approach (Best Practice)
+NIST recommends (but does not require) using ML-KEM in a hybrid scheme combining it with a classical algorithm. The hybrid output = HKDF(classical_secret || post_quantum_secret). An attacker must break BOTH the classical layer AND the post-quantum layer simultaneously. This is exactly what Signal's PQXDH does: X25519 + ML-KEM combined via HKDF.
+
+
+
+5.1  Goals & Design Philosophy
+Nexus Protocol is a hybrid P2P-first, optionally-federated, post-quantum secure messaging protocol. It is designed to be a superset of Tox — retaining every strength while systematically eliminating every weakness. It is named 'Nexus' because it connects people directly, without intermediaries.
+
+
+5.2  NexusID — Identity System
+NexusID replaces Tox's simple 76-char ID with a richer, future-proof identity structure that supports multi-device, post-quantum, and enhanced privacy:
+
+
+NexusID string = Base58Check(IK_ed || IK_dh || PQ_IK_hash || NoSpam || Checksum) — approximately 160–180 characters. Human-readable alternative: a BIP39-style word list ('mountain river cascade storm…' — 15 words = full 160-bit identity, easier to compare in-person for key verification).
+
+5.3  Full Protocol Stack
+
+5.4  Nexus Key Exchange (NKX)
+NKX is your X3DH/PQXDH-inspired asynchronous key agreement. It is the mechanism that allows Alice to send Bob an encrypted message even when Bob is offline:
+
+NKX Process
+Bob generates and publishes his key bundle to the NDHT (or optional relay): IK_ed, IK_dh, SPK + signature, batch of OPKs, PQ_IK (ML-KEM-768 public key), PQ pre-encapsulated secrets.
+Alice fetches Bob's key bundle from NDHT. Verifies SPK signature against Bob's IK_ed.
+Alice performs the classical component (X3DH, 4 DH operations as described in Part 3.1).
+Alice performs the PQ component: encapsulates a secret using Bob's PQ_IK → produces PQ_ciphertext and PQ_shared_secret.
+Combined master secret = HKDF(DH1 || DH2 || DH3 || DH4 || PQ_shared_secret, 'NKX-v1-master').
+Alice's first message contains: her IK_ed, IK_dh, ephemeral key, OPK identifier used, PQ_ciphertext. Bob can reconstruct the master secret from these.
+Bob consumes the OPK (deletes it) on first use. Bob derives the same master secret.
+
+
+5.5  Nexus Ratchet (NR)
+NR is your Double Ratchet variant with additional improvements for privacy against relay servers:
+
+NR Components
+Root Chain: BLAKE2b-based KDF chain. Root key updated with each DH ratchet step. Feeds new chain keys for sending and receiving chains.
+Sending Chain: Symmetric KDF chain, advances per message sent. Produces unique per-message ChaCha20-Poly1305 key + IV. Old keys immediately deleted.
+Receiving Chain: Symmetric KDF chain, advances per message received. Skipped message keys cached up to 2000.
+DH Ratchet: X25519 DH exchange triggered with every message round-trip. Injects fresh DH entropy into root chain → post-compromise security.
+Header Encryption: Message headers (ratchet public key, message counter, previous chain length) are themselves encrypted using a separate header key derived from the root chain. This prevents relay servers from seeing ratchet state or message ordering metadata.
+PQ Ratchet (optional): ML-KEM-512 re-encapsulation every 100 DH ratchet steps for long-running conversations requiring ongoing PQ protection.
+
+5.6  Nexus DHT (NDHT)
+NDHT is an enhanced privacy-preserving DHT for peer discovery that addresses Tox's IP exposure problem:
+
+NDHT vs Tox DHT
+
+5.7  Nexus Store & Forward (NSF) — Offline Messaging
+NSF is the sealed-sender offline message delivery system — solving Tox's most critical limitation. Volunteer relay nodes store encrypted message envelopes for offline recipients:
+
+NSF Architecture
+Sealed Sender: The outer layer of each message envelope is encrypted so the relay server cannot determine the sender's identity. Only the recipient can decrypt the envelope to find out who it's from.
+Double Encryption: Each message has two layers. Outer layer = relay routing (destination Nexus address + TTL + anti-spam proof). Inner layer = NR-encrypted message content (only recipient can decrypt).
+Message TTL: Messages expire after 7 days (configurable: 1 hour to 30 days) if not delivered.
+Anti-Spam: Each stored message requires a small proof-of-work (hashcash-style) to prevent relay flooding.
+Relay Discovery: Relay nodes advertise themselves in the NDHT. Senders choose relays known to be used by the recipient (from previous online interactions) or from DHT advertisements.
+Multi-device Delivery: When a sender has multiple devices, each device gets its own encrypted copy. When recipient registers 3 devices, sender encrypts 3 separate inner envelopes (one per device sub-key).
+
+5.8  Nexus Group Protocol (NGP)
+NGP uses Megolm-inspired sender keys for efficient group encryption, with improvements for decentralized operation:
+
+Session Initialization: Group creator generates an Ed25519 group signing keypair (gsk, gpk) and a symmetric ratchet seed. Creates outbound group session.
+Session Distribution: Creator sends inbound session (ratchet seed + gpk) to each member via pairwise NR-encrypted channels. Each recipient independently verifies the session's signature chain.
+Message Sending: Sender ratchets their outbound session to derive AES-256 key + IV for this message. Encrypts once. Signs with gsk. Sends single ciphertext — O(1) regardless of group size.
+Authentication: Each group message is signed with the sender's gsk, preventing any member from spoofing another member's messages.
+Member Addition: New member receives current session state via pairwise NR from an existing member. Can decrypt messages from that point forward but NOT retroactively.
+Member Removal / Re-key: Removing a member triggers a new session key generation by the group admin. New session distributed to all remaining members via pairwise NR. Removed member can no longer decrypt new messages.
+Offline Groups: Pending group messages stored via NSF for offline members. Session keys refreshed periodically (every 1000 messages or 24 hours) for forward secrecy.
+
+5.9  Full Security Properties
+
+
+
+6.1  Recommended Tech Stack
+
+6.2  App Module Architecture
+Android Modules
+:app — Entry point, dependency injection wiring, Application class
+:feature:chat — Chat screen (Compose), message list, input field, attachments
+:feature:contacts — Contacts list, friend requests, online status
+:feature:calls — Voice/video call UI, WebRTC integration, call controls
+:feature:settings — Profile management, security settings, notification prefs
+:feature:groups — Group chat UI, member management, group creation
+
+Shared KMP Modules
+:domain — Business logic, use cases, repository interfaces, domain models (pure Kotlin)
+:data:local — SQLDelight database schema, DAOs, local storage
+:data:network — Networking coordination (bridges Rust protocol to Kotlin)
+
+Rust Protocol Modules
+:protocol:nexus — Main Nexus Protocol implementation (identity, NKX, NR, NDHT, NSF, NGP)
+:protocol:crypto — Cryptographic primitives wrapper (libsodium + RustCrypto + liboqs)
+:protocol:transport — QUIC transport (Quinn), TCP/TLS fallback, Tor integration
+:protocol:dht — Nexus DHT implementation (based on libp2p Kademlia)
+
+6.3  Feature Roadmap
+Tier 1 — Launch Features (Everything aTox has, done better)
+1-on-1 encrypted text messaging with persistent history
+File transfer (with progress, pause/resume, integrity verification)
+Voice and video calls (WebRTC-based with Nexus signaling)
+Group chats with NGP encryption
+Friend requests via NexusID sharing
+Offline message delivery via NSF
+Multi-device support
+Push notifications via UnifiedPush (no Google dependency)
+Full global language support (see 6.4)
+
+Tier 2 — Differentiating Features
+Disappearing messages with configurable TTL (1 hour to Never)
+Message reactions (encrypted emoji reactions stored E2EE)
+Message editing with cryptographically-signed edit history
+Message replies (reply-to with quote preview)
+Voice messages with waveform visualization
+Full-text message search (client-side encrypted search index using PRIVATE_JOIN_AND_COMPUTE style approach)
+Link previews (opt-in; fetched by sender not receiver to preserve recipient privacy)
+QR code NexusID sharing with in-app scanner
+Contact import from QR code with biometric confirmation
+Scheduled messages
+Polls in group chats
+
+Tier 3 — Advanced Security Features
+Key transparency: append-only public audit log for NexusID public key changes (prevents silent key substitution)
+Safety number / security code verification (Signal-style 60-digit fingerprint comparison for in-person key verification)
+Screen security: prevent screenshots + blur in Android app switcher thumbnail
+Passphrase-protected profile (local SQLite database encrypted with AES-256-GCM using key derived from passphrase via Argon2id)
+Duress PIN: second passphrase that wipes sensitive data when entered (plausible deniability for device seizure scenarios)
+Tor integration: optional route all traffic through Tor (SOCKS5 proxy), require TCP-only mode
+Sealed identity mode: operate completely anonymously — generate a Nexus address not linked to any persistent identity
+Air-gap support: QR-code-based message exchange for completely offline/isolated devices
+
+6.4  Global Language Support — Implementation Details
+Supporting all world languages requires careful, upfront engineering. Adding language support later is 10× more expensive than doing it from the start. Here is the complete plan:
+
+
+
+
+
+7.1  Complete Feature & Security Comparison
+
+
+
+8.1  Open Source Licenses
+
+
+8.2  Cryptographic Export Regulations
+US EAR (Export Administration Regulations): Apps using publicly available open-source cryptography are generally exempt under EAR 740.13(e). File a License Exception ENC classification request with BIS if distributing from the US for commercial purposes.
+EU regulations: Generally permissive for publicly available cryptographic software. No restrictions for standard algorithms.
+China: Strong cryptography products may require MIIT approval for import/use by Chinese entities. Consult local counsel.
+Russia: Encryption products with keys > 128 bits may require FSB notification. Consult local counsel.
+Safe approach: Use only standard widely-deployed algorithms (AES, ChaCha20, X25519, Ed25519, ML-KEM). These have established export classifications. Avoid exotic or export-restricted algorithms.
+
+
+
+9.1  Phased Development Plan
+
+
+
+
+10.1  What You Have Learned
+aTox is a well-architected, privacy-respecting Android Tox client. Its modular Kotlin codebase (atox/domain/core) is clean and well-organized. But it is fundamentally limited by the Tox protocol itself: no offline messaging, IP address exposure to all contacts, a home-brewed (unaudited, KCI-vulnerable) crypto handshake, no multi-device support, and slow development pace from the underlying c-toxcore library.
+
+The Nexus Protocol design addresses every single Tox limitation by composing proven cryptographic primitives: Noise Framework's formally verified handshakes eliminate KCI; Signal's X3DH/Double Ratchet provide best-in-class message encryption; ML-KEM-768 (FIPS 203) provides NIST-certified post-quantum resistance; sealed-sender NSF provides offline delivery; and per-device sub-keys enable multi-device sync — all while maintaining true P2P decentralization.
+
+10.2  The 12 Most Important First Steps
+
+WRITE THE SPEC FIRST. Publish a complete, detailed Nexus Protocol specification document before writing a single line of production code. A credible security application needs a public, reviewable specification. Target: 80+ pages.
+SET UP RUST WORKSPACE. Create a Cargo workspace with the protocol core crates: nexus-identity, nexus-crypto, nexus-dht, nexus-transport. Add libsodium + RustCrypto + liboqs as dependencies from day one.
+IMPLEMENT NKX FIRST. The Nexus Key Exchange (X3DH variant + ML-KEM-768 hybrid) is the most cryptographically complex component. Get this right, with extensive test vectors, before building anything on top of it.
+INTEGRATE ICU4J FROM DAY ONE. Add ICU4J to your Android project and ICU4C to your Rust library before writing any text-handling code. Retrofitting internationalization is 10× harder later.
+BUILD UNIFFI BINDINGS. Set up the UniFFI framework to auto-generate Kotlin/Swift bindings from your Rust protocol library. This is the foundation for all platform integration.
+SET UP WEBLATE IMMEDIATELY. Create a Weblate instance and link it to your GitHub repo before launch. The translation community contributes faster when infrastructure is in place early.
+USE QUIC (QUINN) FOR TRANSPORT. Don't implement your own reliable transport. Quinn is production-grade async QUIC in Rust — it handles 0-RTT reconnection, IP migration (crucial for mobile), and multiplexed streams.
+DESIGN FOR REPRODUCIBLE BUILDS. F-Droid requires reproducible builds for inclusion. Set this up from the beginning: deterministic build system, no dynamic versioning, pinned dependencies.
+NO CUSTOM CRYPTO. Never invent your own cryptographic primitives or protocols. Compose proven, peer-reviewed building blocks (libsodium + Noise + X3DH + Double Ratchet + ML-KEM) as designed here.
+PLAN THE AUDIT BUDGET. Set aside $50,000–$150,000 USD for an independent cryptographic audit before you market this as a security product. Without an audit, it's just experimental software (exactly like current Tox).
+PUBLISH EVERYTHING OPEN SOURCE. The trust of a security application comes from transparency. GPL-3.0 for the app, MIT for the specification. This is non-negotiable for a serious security product.
+BUILD THE COMMUNITY. Start an IRC/Matrix channel, create a blog, and engage developers before v1.0. The most successful open protocols (Signal, Matrix, XMPP) succeed because of their communities, not just their technology.
+
+
+END OF RESEARCH DOCUMENT
+Nexus Protocol Research · Compiled March 2026 · Sources: GitHub/evilcorpltd/aTox, TokTok/c-toxcore, Signal Specs, Noise Protocol, NIST FIPS 203, Matrix Spec, Wikipedia Tox Protocol, F-Droid, AppBrain, arXiv cryptography papers

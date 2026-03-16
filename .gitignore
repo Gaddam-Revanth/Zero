@@ -1,0 +1,25 @@
+# Rust / Cargo
+/target/
+**/target/
+*.rs.bk
+
+# Local build/test artifacts and scratch
+/target-test/
+/kem_probe/target/
+
+# Logs / diagnostic dumps (local only)
+*.log
+*_errors.txt
+*_error.txt
+*_output.log
+*_check*.txt
+err.txt
+test_final.txt
+ml_test.rs
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+

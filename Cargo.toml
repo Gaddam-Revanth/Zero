@@ -1,0 +1,96 @@
+[workspace]
+resolver = "2"
+members = [
+    "zero-crypto",
+    "zero-identity",
+    "zero-handshake",
+    "zero-ratchet",
+    "zero-dht",
+    "zero-transport",
+    "zero-relay",
+    "zero-store-forward",
+    "zero-groups",
+    "zero-protocol",
+]
+
+[workspace.package]
+version     = "1.0.0"
+edition     = "2021"
+authors     = ["ZERO Protocol Contributors"]
+license     = "GPL-3.0"
+repository  = "https://github.com/zero-protocol/zero-protocol"
+description = "ZERO Protocol — Peer-to-peer, end-to-end encrypted, post-quantum resistant messaging protocol"
+keywords    = ["cryptography", "p2p", "messaging", "post-quantum", "privacy"]
+categories  = ["cryptography", "network-programming"]
+rust-version = "1.75"
+
+[workspace.dependencies]
+# --- Cryptography ---
+ed25519-dalek   = { version = "2.1",   features = ["rand_core", "serde"] }
+x25519-dalek    = { version = "2.0",   features = ["serde"] }
+ml-kem          = { version = "0.3.0-rc.0" }
+chacha20poly1305 = { version = "0.10" }
+blake2          = { version = "0.10" }
+hkdf            = { version = "0.12" }
+hmac            = { version = "0.12" }
+sha2            = { version = "0.10" }
+argon2          = { version = "0.5" }
+rand            = { version = "0.8",   features = ["getrandom"] }
+rand_core       = { version = "0.6" }
+getrandom       = { version = "0.2",   features = ["js"] }
+zeroize         = { version = "1.8",   features = ["derive", "zeroize_derive"] }
+subtle          = { version = "2.5" }
+
+# --- Serialization ---
+serde           = { version = "1",     features = ["derive"] }
+serde_cbor      = { version = "0.11" }
+ciborium        = { version = "0.2" }
+hex             = { version = "0.4" }
+base64          = { version = "0.22" }
+
+# --- Networking / QUIC ---
+quinn           = { version = "0.11" }
+rustls          = { version = "0.23",  features = ["ring"] }
+tokio           = { version = "1",     features = ["full"] }
+tokio-stream    = { version = "0.1" }
+futures         = { version = "0.3" }
+async-trait     = { version = "0.1" }
+bytes           = { version = "1" }
+
+# --- mDNS / LAN Discovery ---
+mdns-sd         = { version = "0.11" }
+
+# --- DHT / P2P ---
+# (Kademlia implemented from scratch for ZERO)
+
+# --- Error Handling ---
+thiserror       = { version = "1" }
+anyhow          = { version = "1" }
+
+# --- Logging ---
+tracing         = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# --- Utilities ---
+dashmap         = { version = "5" }
+parking_lot     = { version = "0.12" }
+smallvec        = { version = "1" }
+uuid            = { version = "1",     features = ["v4", "serde"] }
+chrono          = { version = "0.4",   features = ["serde"] }
+
+# --- UniFFI (for Android bindings) ---
+uniffi          = { version = "0.28" }
+
+# --- Testing ---
+proptest        = { version = "1" }
+
+[profile.release]
+opt-level   = 3
+lto         = true
+codegen-units = 1
+panic       = "abort"
+strip       = "symbols"
+
+[profile.dev]
+opt-level   = 0
+debug       = true

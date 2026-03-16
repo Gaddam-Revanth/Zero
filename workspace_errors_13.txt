@@ -1,0 +1,184 @@
+﻿cargo :     Checking 
+zero-groups v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-groups)
+At line:1 char:1
++ cargo check 
+--workspace --offline 
+2>&1 | Out-File 
+-FilePath workspace ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Checking    
+ ze...RO\zero-group    
+s):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+    Checking 
+zero-handshake v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-handshake
+)
+warning: field 
+`config` is never read
+  --> zero-relay\src\se
+rver.rs:20:5
+   |
+19 | pub struct 
+RelayServer {
+   |            
+----------- field in 
+this struct
+20 |     config: 
+RelayConfig,
+   |     ^^^^^^
+   |
+   = note: 
+`#[warn(dead_code)]` 
+(part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: `zero-relay` 
+(lib) generated 1 
+warning
+error: missing 
+documentation for a 
+struct
+ --> zero-groups\src\me
+mber.rs:3:1
+  |
+3 | pub struct 
+MemberManager;
+  | ^^^^^^^^^^^^^^^^^^^
+^^^^^
+  |
+note: the lint level 
+is defined here
+ --> zero-groups\src\li
+b.rs:6:9
+  |
+6 | 
+#![deny(missing_docs)]
+  |         
+^^^^^^^^^^^^
+
+error: could not 
+compile `zero-groups` 
+(lib) due to 1 
+previous error
+warning: build failed, 
+waiting for other jobs 
+to finish...
+error: missing 
+documentation for a 
+struct field
+  --> zero-handshake\sr
+c\error.rs:30:21
+   |
+30 |     MessageLength 
+{ expected: usize, 
+got: usize },
+   |                   
+  ^^^^^^^^^^^^^^^
+   |
+note: the lint level 
+is defined here
+  --> zero-handshake\sr
+c\lib.rs:15:9
+   |
+15 | 
+#![deny(missing_docs)]
+   |         
+^^^^^^^^^^^^
+
+error: missing 
+documentation for a 
+struct field
+  --> zero-handshake\sr
+c\error.rs:30:38
+   |
+30 |     MessageLength 
+{ expected: usize, 
+got: usize },
+   |                   
+                   
+^^^^^^^^^^
+
+error: missing 
+documentation for an 
+associated function
+  --> zero-handshake\sr
+c\x3dh.rs:38:5
+   |
+38 |     pub fn new() 
+-> Self {
+   |     
+^^^^^^^^^^^^^^^^^^^^
+
+error: missing 
+documentation for a 
+method
+  --> zero-handshake\sr
+c\x3dh.rs:42:5
+   |
+42 | /     pub fn 
+initiate(
+43 | |         &self,
+44 | |         
+alice_keypair: 
+&ZeroKeypair,
+45 | |         
+bob_bundle: &KeyBundle,
+46 | |     ) -> Result<
+(ZkxInitMessage, 
+MasterSecret), 
+HandshakeError> {
+   | |_________________
+_______________________
+_______________________
+^
+
+error: missing 
+documentation for a 
+struct
+  --> zero-handshake\sr
+c\x3dh.rs:99:1
+   |
+99 | pub struct 
+X3dhResponder;
+   | ^^^^^^^^^^^^^^^^^^
+^^^^^^
+
+error: missing 
+documentation for an 
+associated function
+   --> zero-handshake\s
+rc\x3dh.rs:102:5
+    |
+102 | /     pub fn 
+respond(
+103 | |         
+bob_bundle_owned: &mut 
+zero_identity::bundle::
+OwnedKeyBundle,
+104 | |         
+init_msg: 
+&ZkxInitMessage,
+105 | |     ) -> 
+Result<MasterSecret, 
+HandshakeError> {
+    | |________________
+_______________________
+______^
+
+error: could not 
+compile 
+`zero-handshake` (lib) 
+due to 6 previous 
+errors

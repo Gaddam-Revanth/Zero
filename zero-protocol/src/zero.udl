@@ -1,0 +1,35 @@
+namespace zero {
+    /// Initialize the global ZERO Protocol logger
+    void init_logger();
+};
+
+/// A connected ZERO identity instance
+interface ZeroNode {
+    /// Generate a fresh ZERO identity
+    [Throws=ZeroError]
+    constructor();
+
+    /// Connect to the peer-to-peer network
+    [Throws=ZeroError]
+    void connect();
+
+    /// Add a new contact by their Base58 ZERO ID string
+    [Throws=ZeroError]
+    ZeroContact add_contact(string zero_id_str);
+};
+
+/// A friend/contact connection
+interface ZeroContact {
+    /// Send an end-to-end encrypted message
+    [Throws=ZeroError]
+    void send_message(string msg);
+};
+
+/// High-level errors exposed to Kotlin/Swift
+[Error]
+enum ZeroError {
+    "IdentityError",
+    "HandshakeFailed",
+    "ConnectionFailed",
+    "InvalidPayload"
+};

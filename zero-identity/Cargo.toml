@@ -1,0 +1,21 @@
+[package]
+name        = "zero-identity"
+description = "ZERO Protocol — Identity system (ZERO IDs, keypairs, prekeys)"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto  = { path = "../zero-crypto" }
+serde        = { workspace = true }
+serde_cbor   = { workspace = true }
+zeroize      = { workspace = true }
+rand         = { workspace = true }
+thiserror    = { workspace = true }
+hex          = { workspace = true }
+tracing      = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

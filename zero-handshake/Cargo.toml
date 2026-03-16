@@ -1,0 +1,22 @@
+[package]
+name        = "zero-handshake"
+description = "ZERO Protocol — ZKX: Noise XX + X3DH + ML-KEM-768 key exchange"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto   = { path = "../zero-crypto" }
+zero-identity = { path = "../zero-identity" }
+serde         = { workspace = true }
+serde_cbor    = { workspace = true }
+zeroize       = { workspace = true }
+rand          = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+bytes         = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

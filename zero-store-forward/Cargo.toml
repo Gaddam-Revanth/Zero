@@ -1,0 +1,24 @@
+[package]
+name        = "zero-store-forward"
+description = "ZERO Protocol — ZSF: Sealed-sender offline message delivery"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto   = { path = "../zero-crypto" }
+zero-identity = { path = "../zero-identity" }
+zero-ratchet  = { path = "../zero-ratchet" }
+serde         = { workspace = true }
+serde_cbor    = { workspace = true }
+zeroize       = { workspace = true }
+rand          = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+chrono        = { workspace = true }
+bytes         = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

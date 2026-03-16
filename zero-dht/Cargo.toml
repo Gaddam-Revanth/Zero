@@ -1,0 +1,30 @@
+[package]
+name        = "zero-dht"
+description = "ZERO Protocol — ZDHT: Privacy-preserving Kademlia DHT with onion routing"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto   = { path = "../zero-crypto" }
+zero-identity = { path = "../zero-identity" }
+serde         = { workspace = true }
+serde_cbor    = { workspace = true }
+tokio         = { workspace = true }
+async-trait   = { workspace = true }
+bytes         = { workspace = true }
+dashmap       = { workspace = true }
+parking_lot   = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+rand          = { workspace = true }
+smallvec      = { workspace = true }
+mdns-sd       = { workspace = true }
+chrono        = { workspace = true }
+hex           = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+proptest = { workspace = true }

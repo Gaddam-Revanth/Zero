@@ -1,0 +1,29 @@
+[package]
+name        = "zero-transport"
+description = "ZERO Protocol — Transport layer: QUIC, TCP/TLS, NAT traversal"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+repository.workspace = true
+
+[dependencies]
+zero-crypto   = { path = "../zero-crypto" }
+zero-identity = { path = "../zero-identity" }
+quinn         = { workspace = true }
+rustls        = { workspace = true }
+tokio         = { workspace = true }
+tokio-stream  = { workspace = true }
+futures       = { workspace = true }
+async-trait   = { workspace = true }
+bytes         = { workspace = true }
+serde         = { workspace = true }
+serde_cbor    = { workspace = true }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+dashmap       = { workspace = true }
+parking_lot   = { workspace = true }
+rand          = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

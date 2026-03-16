@@ -1,0 +1,121 @@
+﻿cargo :     Checking 
+zero-handshake v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-handshake
+)
+At line:1 char:1
++ cargo check 
+--workspace --offline 
+2>&1 | Out-File 
+-FilePath workspace ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Checking    
+ ze...zero-handshak    
+e):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+warning: field 
+`config` is never read
+  --> zero-relay\src\se
+rver.rs:21:5
+   |
+19 | pub struct 
+RelayServer {
+   |            
+----------- field in 
+this struct
+20 |     /// 
+Configuration for...
+21 |     config: 
+RelayConfig,
+   |     ^^^^^^
+   |
+   = note: 
+`#[warn(dead_code)]` 
+(part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: `zero-relay` 
+(lib) generated 1 
+warning
+error: missing 
+documentation for a 
+struct field
+  --> zero-handshake\sr
+c\error.rs:30:21
+   |
+30 |     MessageLength 
+{ expected: usize, 
+got: usize },
+   |                   
+  ^^^^^^^^^^^^^^^
+   |
+note: the lint level 
+is defined here
+  --> zero-handshake\sr
+c\lib.rs:15:9
+   |
+15 | 
+#![deny(missing_docs)]
+   |         
+^^^^^^^^^^^^
+
+error: missing 
+documentation for a 
+struct field
+  --> zero-handshake\sr
+c\error.rs:30:38
+   |
+30 |     MessageLength 
+{ expected: usize, 
+got: usize },
+   |                   
+                   
+^^^^^^^^^^
+
+error: missing 
+documentation for an 
+associated function
+  --> zero-handshake\sr
+c\x3dh.rs:38:5
+   |
+38 |     pub fn new() 
+-> Self {
+   |     
+^^^^^^^^^^^^^^^^^^^^
+
+error: missing 
+documentation for a 
+method
+  --> zero-handshake\sr
+c\x3dh.rs:42:5
+   |
+42 | /     pub fn 
+initiate(
+43 | |         &self,
+44 | |         
+alice_keypair: 
+&ZeroKeypair,
+45 | |         
+bob_bundle: &KeyBundle,
+46 | |     ) -> Result<
+(ZkxInitMessage, 
+MasterSecret), 
+HandshakeError> {
+   | |_________________
+_______________________
+_______________________
+^
+
+error: could not 
+compile 
+`zero-handshake` (lib) 
+due to 4 previous 
+errors

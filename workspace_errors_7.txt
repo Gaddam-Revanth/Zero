@@ -1,0 +1,429 @@
+﻿cargo : warning: 
+unused imports: 
+`Ed25519SecretKey`, 
+`MlKem768DecapsKey`, 
+and `X25519SecretKey`
+At line:1 char:1
++ cargo check 
+--workspace --offline 
+2>&1 | Out-File 
+-FilePath workspace ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (warning: unus   
+ ed...25519SecretKe    
+y`:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+ --> zero-identity\src\
+keypair.rs:5:42
+  |
+5 | 
+...:{X25519Keypair, 
+X25519PublicKey, 
+X25519SecretKey},
+  |                    
+                  
+^^^^^^^^^^^^^^^
+6 | ...h::blake2b_256,
+7 | ...::{MlKem768Decap
+sKey, 
+MlKem768EncapsKey, 
+MlKem768Keypair},
+  |       
+^^^^^^^^^^^^^^^^^
+8 | 
+...n::{Ed25519Keypair, 
+Ed25519PublicKey, 
+Ed25519SecretKey},
+  |                    
+                      
+^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unuse
+d_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: unused 
+imports: 
+`ZeroizeOnDrop` and 
+`Zeroize`
+  --> zero-identity\src
+\keypair.rs:11:15
+   |
+11 | ...::{Zeroize, 
+ZeroizeOnDrop};
+   |       ^^^^^^^  
+^^^^^^^^^^^^^
+
+warning: 
+`zero-identity` (lib) 
+generated 2 warnings 
+(run `cargo fix --lib 
+-p zero-identity` to 
+apply 2 suggestions)
+    Checking 
+zero-ratchet v1.0.0 (C:
+\Users\Revanth\Download
+s\ZERO\zero-ratchet)
+    Checking 
+zero-transport v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-transport
+)
+    Checking 
+zero-handshake v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-handshake
+)
+warning: unused 
+import: `xor_distance`
+ --> zero-dht\src\kbuck
+et.rs:3:13
+  |
+3 | 
+...::{xor_distance, 
+N...
+  |       ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unuse
+d_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: unused 
+import: `ed25519_sign`
+  --> zero-dht\src\node
+_record.rs:12:46
+   |
+12 | ...e, 
+ed25519_sign, e...
+   |       ^^^^^^^^^^^^
+
+warning: unused 
+import: `K_BUCKET_SIZE`
+ --> zero-dht\src\routi
+ng_table.rs:4:34
+  |
+4 | ...o, 
+K_BUCKET_SIZE},
+  |       ^^^^^^^^^^^^^
+
+warning: `zero-dht` 
+(lib) generated 3 
+warnings (run `cargo 
+fix --lib -p zero-dht` 
+to apply 3 suggestions)
+warning: unused 
+import: 
+`std::sync::Arc`
+  --> zero-transport\sr
+c\quic.rs:12:5
+   |
+12 | use 
+std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unus
+ed_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: unused 
+imports: 
+`ZeroizeOnDrop` and 
+`Zeroize`
+  --> zero-ratchet\src\
+state.rs:14:15
+   |
+14 | use 
+zeroize::{Zeroize, 
+ZeroizeOnDrop};
+   |               
+^^^^^^^  ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unus
+ed_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+error[E0432]: 
+unresolved import `zero
+_crypto::kdf::hkdf`
+  --> zero-handshake\sr
+c\x3dh.rs:20:11
+   |
+20 |     kdf::{hkdf, 
+KdfContext},
+   |           ^^^^
+   |           |
+   |           no 
+`hkdf` in `kdf`
+   |           help: a 
+similar name exists in 
+the module: `Hkdf`
+
+warning: unused 
+imports: `Deserialize` 
+and `Serialize`
+  --> zero-handshake\sr
+c\noise.rs:12:13
+   |
+12 | use 
+serde::{Deserialize, 
+Serialize};
+   |             
+^^^^^^^^^^^  ^^^^^^^^^
+   |
+   = note: `#[warn(unus
+ed_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: unused 
+imports: 
+`AEAD_KEY_SIZE`, 
+`X25519SecretKey`, and 
+`X25519SharedSecret`
+  --> zero-handshake\sr
+c\noise.rs:14:50
+   |
+14 |     
+aead::{decrypt, 
+encrypt, AeadKey, 
+AeadNonce, 
+AEAD_KEY_SIZE},
+   |                   
+                       
+        ^^^^^^^^^^^^^
+15 |     
+dh::{X25519Keypair, 
+X25519PublicKey, 
+X25519SecretKey, 
+X25519SharedSecret},
+   |                   
+                       
+^^^^^^^^^^^^^^^  
+^^^^^^^^^^^^^^^^^^
+
+warning: unused 
+import: `zero_identity:
+:keypair::ZeroKeypair`
+  --> zero-handshake\sr
+c\noise.rs:19:5
+   |
+19 | use zero_identity:
+:keypair::ZeroKeypair;
+   |     ^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused 
+import: 
+`MlKem768Ciphertext`
+  --> zero-handshake\sr
+c\x3dh.rs:19:30
+   |
+19 |     kem::{MlKem768
+EncapsKey, 
+MlKem768Ciphertext, ml_
+kem_768_encapsulate, ml
+_kem_768_decapsulate},
+   |                   
+           
+^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the 
+trait bound 
+`quinn::Incoming: 
+Default` is not 
+satisfied
+  --> zero-transport\sr
+c\quic.rs:38:24
+   |
+38 |         let 
+incoming = 
+Default::default(); // 
+Stub
+   |                   
+     
+^^^^^^^^^^^^^^^^^^ the 
+trait `Default` is not 
+implemented for 
+`quinn::Incoming`
+
+For more information 
+about this error, try 
+`rustc --explain 
+E0277`.
+error[E0308]: 
+mismatched types
+  --> zero-handshake\sr
+c\x3dh.rs:70:43
+   |
+70 |         let 
+bob_idk_pub = X25519Pub
+licKey(bob_bundle.idk_p
+ub);
+   |                   
+        
+--------------- 
+^^^^^^^^^^^^^^^^^^ 
+expected `[u8; 32]`, 
+found `X25519PublicKey`
+   |                   
+        |
+   |                   
+        arguments to 
+this struct are 
+incorrect
+   |
+note: tuple struct 
+defined here
+  --> zero-crypto\src\d
+h.rs:14:12
+   |
+14 | pub struct 
+X25519PublicKey(pub 
+[u8; X25519_KEY_SIZE]);
+   |            
+^^^^^^^^^^^^^^^
+
+error[E0308]: 
+mismatched types
+   --> zero-handshake\s
+rc\x3dh.rs:114:28
+    |
+114 |             
+alice_isk_pub: alice_ke
+ypair.isk.public_key(),
+    |                  
+          ^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^ 
+expected 
+`X25519PublicKey`, 
+found 
+`Ed25519PublicKey`
+
+warning: 
+`zero-transport` (lib) 
+generated 1 warning
+error: could not 
+compile 
+`zero-transport` (lib) 
+due to 1 previous 
+error; 1 warning 
+emitted
+warning: build failed, 
+waiting for other jobs 
+to finish...
+error[E0609]: no field 
+`0` on type `Result<Enc
+ryptedHeader, 
+RatchetError>`
+   --> zero-ratchet\src
+\state.rs:168:40
+    |
+168 |         aad.exten
+d_from_slice(&enc_hdr.0
+);
+    |                  
+                      
+^ unknown field
+    |
+help: one of the 
+expressions' fields 
+has a field of the 
+same name
+    |
+168 |         aad.exten
+d_from_slice(&enc_hdr.u
+nwrap().0);
+    |                  
+                      
++++++++++
+
+error[E0308]: 
+mismatched types
+   --> zero-ratchet\src
+\state.rs:179:21
+    |
+179 |             
+header: enc_hdr,
+    |                  
+   ^^^^^^^ expected 
+`EncryptedHeader`, 
+found `Result<Encrypted
+Header, RatchetError>`
+    |
+    = note: expected 
+struct 
+`EncryptedHeader`
+                 found 
+enum `Result<EncryptedH
+eader, RatchetError>`
+help: use the `?` 
+operator to extract 
+the `Result<EncryptedHe
+ader, RatchetError>` 
+value, propagating a 
+`Result::Err` value to 
+the caller
+    |
+179 |             
+header: enc_hdr?,
+    |                  
+          +
+
+warning: unused 
+variable: `re`
+   --> zero-handshake\s
+rc\noise.rs:277:13
+    |
+277 |         let re = 
+self.remote_ephemeral.a
+s_ref().unwrap().clone(
+);
+    |             ^^ 
+help: if this is 
+intentional, prefix it 
+with an underscore: 
+`_re`
+    |
+    = note: `#[warn(unu
+sed_variables)]` (part 
+of `#[warn(unused)]`) 
+on by default
+
+Some errors have 
+detailed explanations: 
+E0308, E0432.
+For more information 
+about an error, try 
+`rustc --explain 
+E0308`.
+warning: 
+`zero-handshake` (lib) 
+generated 5 warnings
+error: could not 
+compile 
+`zero-handshake` (lib) 
+due to 3 previous 
+errors; 5 warnings 
+emitted
+Some errors have 
+detailed explanations: 
+E0308, E0609.
+warning: 
+`zero-ratchet` (lib) 
+generated 1 warning
+error: could not 
+compile `zero-ratchet` 
+(lib) due to 2 
+previous errors; 1 
+warning emitted
