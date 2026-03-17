@@ -15,6 +15,38 @@ use zero_crypto::{
     hash::{blake2b_256, blake2b_256_multi},
     kdf::{hkdf, hkdf_extract, hkdf_expand, KdfContext},
 };
+use serde::{Deserialize, Serialize};
+
+/// R2: Structured Handshake Prologue for Downgrade Resistance.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HandshakePrologue {
+    /// Protocol name (e.g., "ZERO-Protocol").
+    pub protocol: String,
+    /// Major version.
+    pub major: u16,
+    /// Minor version.
+    pub minor: u16,
+    /// Feature flags (e.g., bit 0 = PQ enabled).
+    pub flags: u16,
+}
+
+impl HandshakePrologue {
+    /// ZERO Protocol v1.0 default prologue.
+    pub fn v1_0(flags: u16) -> Self {
+        Self {
+            protocol: "ZERO-Protocol".to_string(),
+            major: 1,
+            minor: 0,
+            flags,
+        }
+    }
+
+    /// Encode to bytes for Noise mix_hash.
+    pub fn encode(&self) -> Vec<u8> {
+        // Use CBOR or simple binary packing. We'll use CBOR for consistency with ZERO wire.
+        serde_cbor::to_vec(self).unwrap_or_default()
+    }
+}
 
 /// Noise protocol name — embedded in the prologue.
 pub const NOISE_PROTOCOL_NAME: &[u8] = b"Noise_XX_25519_ChaChaPoly_BLAKE2b";
@@ -154,10 +186,10 @@ pub struct NoiseHandshakeState {
 }
 
 impl NoiseHandshakeState {
-    /// Create a new Noise XX handshake state.
-    pub fn new(role: NoiseRole, local_static: X25519Keypair, prologue: &[u8]) -> Self {
+    /// Create a new Noise XX handshake state with a structured prologue.
+    pub fn new(role: NoiseRole, local_static: X25519Keypair, prologue: &HandshakePrologue) -> Self {
         let mut sym = SymmetricState::new(NOISE_PROTOCOL_NAME);
-        sym.mix_hash(prologue);
+        sym.mix_hash(&prologue.encode());
         let local_ephemeral = X25519Keypair::generate();
         Self {
             role,
@@ -335,13 +367,13 @@ mod tests {
     fn test_noise_xx_full_handshake() {
         let alice_static = X25519Keypair::generate();
         let bob_static = X25519Keypair::generate();
-        let prologue = b"ZERO-Protocol-v1";
+        let prologue = HandshakePrologue::v1_0(0);
 
         let mut alice = NoiseHandshakeState::new(
-            NoiseRole::Initiator, alice_static, prologue,
+            NoiseRole::Initiator, alice_static, &prologue,
         );
         let mut bob = NoiseHandshakeState::new(
-            NoiseRole::Responder, bob_static, prologue,
+            NoiseRole::Responder, bob_static, &prologue,
         );
 
         // Handshake

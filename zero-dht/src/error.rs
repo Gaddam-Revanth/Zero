@@ -26,4 +26,7 @@ pub enum DhtError {
     /// Crypto error.
     #[error("Crypto error: {0}")]
     CryptoError(String),
+    /// Authentication failed (e.g., onion peel).
+    #[error("Authentication failed")]
+    AuthenticationFailed,
 }

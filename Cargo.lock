@@ -3081,6 +3081,7 @@ dependencies = [
  "bytes",
  "chrono",
  "dashmap",
+ "mdns-sd",
  "parking_lot",
  "proptest",
  "serde",

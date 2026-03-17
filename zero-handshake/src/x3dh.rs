@@ -27,6 +27,15 @@ pub struct ZkxInitMessage {
     pub bob_opk_index: Option<u32>,
     /// ML-KEM-768 ciphertext (Alice → Bob).
     pub kem_ciphertext: Vec<u8>,
+    /// R4: Alice's confirmation tag.
+    pub alice_tag: [u8; 32],
+}
+
+/// Bob's response to Alice's initiation (optional extension for confirmation).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ZkxConfirmMessage {
+    /// R4: Bob's confirmation tag.
+    pub bob_tag: [u8; 32],
 }
 
 /// ZKX initiator (Alice).
@@ -101,6 +110,15 @@ impl X3dhInitiator {
             .map_err(|_| HandshakeError::KdfError)?;
         let mut ms_arr = [0u8; MASTER_SECRET_SIZE];
         ms_arr.copy_from_slice(&ms_bytes);
+        
+        let ms = MasterSecret(ms_arr);
+        
+        // R4: Generate Alice's tag
+        let alice_tag = if let Some(h) = noise_hash {
+            ms.generate_tag("A->B", &h)?
+        } else {
+            [0u8; 32]
+        };
 
         let init_msg = ZkxInitMessage {
             alice_isk_pub: alice_keypair.isk.public_key(),
@@ -109,9 +127,10 @@ impl X3dhInitiator {
             bob_spk_index: bob_bundle.spk.index,
             bob_opk_index: opk_index,
             kem_ciphertext: kem_ct.0,
+            alice_tag,
         };
 
-        Ok((init_msg, MasterSecret(ms_arr)))
+        Ok((init_msg, ms))
     }
 }
 
@@ -123,16 +142,17 @@ impl X3dhResponder {
     pub fn respond(
         bob_bundle_owned: &mut zero_identity::bundle::OwnedKeyBundle,
         init_msg: &ZkxInitMessage,
-    ) -> Result<MasterSecret, HandshakeError> {
+    ) -> Result<(MasterSecret, [u8; 32]), HandshakeError> {
         Self::respond_with_noise_hash(bob_bundle_owned, init_msg, None)
     }
 
     /// Respond to an incoming ZKX initiation message, optionally binding to the Noise XX hash.
+    /// Returns both the MasterSecret and Bob's confirmation tag.
     pub fn respond_with_noise_hash(
         bob_bundle_owned: &mut zero_identity::bundle::OwnedKeyBundle,
         init_msg: &ZkxInitMessage,
         noise_hash: Option<[u8; 32]>,
-    ) -> Result<MasterSecret, HandshakeError> {
+    ) -> Result<(MasterSecret, [u8; 32]), HandshakeError> {
         let bob_keypair = &bob_bundle_owned.keypair;
         let alice_ek_pub  = init_msg.alice_ek_pub.clone();
         let alice_idk_pub = init_msg.alice_idk_pub.clone();
@@ -182,8 +202,19 @@ impl X3dhResponder {
             .map_err(|_| HandshakeError::KdfError)?;
         let mut ms_arr = [0u8; MASTER_SECRET_SIZE];
         ms_arr.copy_from_slice(&ms_bytes);
+        
+        let ms = MasterSecret(ms_arr);
 
-        Ok(MasterSecret(ms_arr))
+        // R4: Verify Alice's tag
+        let bob_tag = if let Some(h) = noise_hash {
+            ms.verify_tag("A->B", &h, &init_msg.alice_tag)?;
+            // R4: Generate Bob's tag
+            ms.generate_tag("B->A", &h)?
+        } else {
+            [0u8; 32]
+        };
+
+        Ok((ms, bob_tag))
     }
 }
 
@@ -203,7 +234,7 @@ mod tests {
         let (init_msg, alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
 
         let mut bob_owned_correct = bob_owned;
-        let bob_ms = X3dhResponder::respond(
+        let (bob_ms, _bob_tag) = X3dhResponder::respond(
             &mut bob_owned_correct,
             &init_msg,
         ).unwrap();

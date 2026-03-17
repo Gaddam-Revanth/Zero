@@ -7,6 +7,10 @@
 
 pub mod api;
 pub mod error;
+pub mod discovery;
+pub mod zft;
+pub mod zav;
+pub mod nat;
 
 pub use api::{init_logger, ZeroNode, ZeroContact};
 pub use error::ZeroError;

@@ -64,6 +64,33 @@ impl RoutingTable {
         self.buckets.iter().map(|b| b.len()).sum()
     }
 
+    /// Create a 3-hop onion-wrapped lookup request.
+    pub fn create_onion_lookup(
+        &self,
+        target: &NodeId,
+    ) -> Result<crate::onion::OnionPacket, crate::DhtError> {
+        let nodes = self.closest_nodes(target, 20);
+        if nodes.len() < 3 {
+            return Err(crate::DhtError::NodeNotFound);
+        }
+
+        // Logic: Pick 3 nodes from different buckets if possible, or just random
+        let h1 = &nodes[0].node_id;
+        let h2 = &nodes[1].node_id;
+        let h3 = &nodes[2].node_id;
+
+        let hops = [*h1, *h2, *h3];
+        // Mocking keys for now (in real system, derived via DH with hop's onion PK)
+        let keys = [
+            zero_crypto::aead::AeadKey([0u8; 32]),
+            zero_crypto::aead::AeadKey([1u8; 32]),
+            zero_crypto::aead::AeadKey([2u8; 32]),
+        ];
+
+        let payload = format!("FIND_NODE:{}", target.0.iter().map(|b| format!("{:02x}", b)).collect::<String>());
+        crate::onion::OnionPacket::wrap_3_hops(payload.as_bytes(), &hops, &keys)
+    }
+
     /// Determine which bucket a node belongs to (by XOR distance leading bit).
     fn bucket_index(&self, node_id: &NodeId) -> usize {
         let dist = xor_distance(&self.own_id, node_id);

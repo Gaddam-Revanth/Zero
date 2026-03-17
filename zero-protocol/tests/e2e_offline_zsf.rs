@@ -1,4 +1,6 @@
+// ZERO Protocol E2E Offline ZSF Test
 use zero_handshake::{NoiseHandshakeState, NoiseRole, X3dhInitiator, X3dhResponder};
+use zero_handshake::noise::HandshakePrologue;
 use zero_identity::{bundle::OwnedKeyBundle, zeroid::ZeroId, keypair::ZeroKeypair};
 use zero_crypto::dh::X25519Keypair;
 use zero_ratchet::{RatchetSession, SessionInit, RatchetMessage};
@@ -13,12 +15,12 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     let bob_bundle = bob_owned.public_bundle(&bob_id);
 
     // --- Phase 1: Noise XX (transcript binding) ---
-    let prologue = b"ZERO-Protocol-v1.0.0";
+    let prologue = HandshakePrologue::v1_0(0);
     let alice_static = X25519Keypair::generate();
     let bob_static = X25519Keypair::generate();
 
-    let mut alice_noise = NoiseHandshakeState::new(NoiseRole::Initiator, alice_static, prologue);
-    let mut bob_noise = NoiseHandshakeState::new(NoiseRole::Responder, bob_static, prologue);
+    let mut alice_noise = NoiseHandshakeState::new(NoiseRole::Initiator, alice_static, &prologue);
+    let mut bob_noise = NoiseHandshakeState::new(NoiseRole::Responder, bob_static, &prologue);
 
     let msg1 = alice_noise.write_message1().expect("msg1");
     let msg2 = bob_noise.read_message1_write_message2(&msg1).expect("msg2");
@@ -38,7 +40,7 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
         .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(noise_hash))
         .expect("alice initiate");
 
-    let bob_ms = X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(noise_hash))
+    let (bob_ms, _bob_tag) = X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(noise_hash))
         .expect("bob respond");
 
     assert_eq!(alice_ms.0, bob_ms.0);

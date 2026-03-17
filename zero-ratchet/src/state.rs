@@ -154,6 +154,14 @@ impl RatchetSession {
         Ok(session)
     }
 
+    /// R6: Perform a PQ ratchet step by mixing in a post-quantum shared secret.
+    /// This provides ongoing post-quantum forward secrecy.
+    pub fn pq_ratchet_step(&mut self, kem_shared_secret: &[u8; 32]) -> Result<(), RatchetError> {
+        let prk = hkdf_extract(&self.rk, kem_shared_secret);
+        self.rk = hkdf_expand(&prk, KdfContext::ZrRootChain, 64).map_err(|_| RatchetError::KdfError)?;
+        Ok(())
+    }
+
     fn dh_ratchet_step(&mut self, remote_pub: &X25519PublicKey) -> Result<(), RatchetError> {
         self.pn = self.ns;
         self.ns = 0;

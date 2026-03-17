@@ -1,0 +1,24 @@
+cargo :     Finished 
+`dev` profile 
+[unoptimized + 
+debuginfo] target(s) 
+in 0.41s
+At line:1 char:1
++ cargo check -p 
+zero-protocol 2>&1 | 
+Out-File -FilePath 
+ide_refresh.tx ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo     
+         : 
+NotSpecified    : (    
+Finished `d.    
+..get(s) in 0.41s:S    
+tring) [], RemoteEx    
+ception
+    + 
+FullyQualifiedErr    
+orId : NativeComman    
+dError
+ 

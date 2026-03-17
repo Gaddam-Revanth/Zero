@@ -1,0 +1,45 @@
+cargo : warning: field 
+`download_dir` is 
+never read
+At line:1 char:1
++ cargo check 
+--workspace 2>&1 | 
+Out-File -FilePath 
+final2.txt -Encodin ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo     
+         : 
+NotSpecified: (warning 
+   : field ...` is 
+never re    ad:String) 
+[], RemoteExc    eption
+    + 
+FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+  --> zero-protocol\src
+\zft.rs:28:5
+   |
+27 | pub struct 
+ZftManager {
+   |            
+---------- field in 
+this struct
+28 |     download_dir: 
+PathBuf,
+   |     ^^^^^^^^^^^^
+   |
+   = note: 
+`#[warn(dead_code)]` 
+(part of 
+`#[warn(unused)]`) on 
+by default
+
+warning: 
+`zero-protocol` (lib) 
+generated 1 warning
+    Finished `dev` 
+profile [unoptimized + 
+debuginfo] target(s) 
+in 1.54s

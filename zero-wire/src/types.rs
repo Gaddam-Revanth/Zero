@@ -42,6 +42,18 @@ pub enum PacketType {
     ZsfFetchReq = 0x0031,
     /// ZSF fetch response.
     ZsfFetchResp = 0x0032,
+    /// ZGP group event.
+    ZgpEvent = 0x0040,
+    /// ZAV call signal.
+    ZavSignal = 0x0050,
+    /// ZFT file offer.
+    ZftOffer = 0x0060,
+    /// ZFT file chunk.
+    ZftChunk = 0x0061,
+    /// ZFT file ack.
+    ZftAck = 0x0062,
+    /// NAT hole-punching coordination.
+    NatCoordination = 0x0070,
 }
 
 impl PacketType {
@@ -59,6 +71,12 @@ impl PacketType {
             0x0030 => Self::ZsfStoreEnvelope,
             0x0031 => Self::ZsfFetchReq,
             0x0032 => Self::ZsfFetchResp,
+            0x0040 => Self::ZgpEvent,
+            0x0050 => Self::ZavSignal,
+            0x0060 => Self::ZftOffer,
+            0x0061 => Self::ZftChunk,
+            0x0062 => Self::ZftAck,
+            0x0070 => Self::NatCoordination,
             _ => return None,
         })
     }
