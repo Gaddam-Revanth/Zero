@@ -120,35 +120,38 @@ impl QuicTransport {
         Ok(conn)
     }
 
-    /// Send a framed ZERO packet on a new bidirectional stream.
+    /// Send a framed ZERO packet on a bidirectional stream.
     pub async fn send_packet(
-        conn: &Connection,
-        header: PacketHeader,
-        body: Bytes,
+        send: &mut quinn::SendStream,
+        pkt: &Packet,
     ) -> Result<(), TransportError> {
-        let pkt = Packet { header, body };
         let bytes = pkt.encode_v1().map_err(|e| TransportError::StreamError(e.to_string()))?;
-        let (mut send, mut recv) = conn
-            .open_bi()
-            .await
-            .map_err(|e| TransportError::StreamError(e.to_string()))?;
         send.write_all(&bytes)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-        send.finish().map_err(|e| TransportError::StreamError(e.to_string()))?;
-        // Drain peer response if any (for future use)
-        let _ = recv.read_to_end(usize::MAX).await;
         Ok(())
     }
 
-    /// Receive a single framed ZERO packet from an incoming bidirectional stream.
+    /// Receive a single framed ZERO packet from an incoming receive stream.
     pub async fn recv_packet(
-        mut recv: quinn::RecvStream,
+        recv: &mut quinn::RecvStream,
     ) -> Result<Packet, TransportError> {
-        let bytes = recv
-            .read_to_end((zero_wire::header::HEADER_LEN_V1 as usize) + (zero_wire::header::MAX_BODY_LEN as usize))
+        let mut head_bytes = [0u8; zero_wire::header::HEADER_LEN_V1 as usize];
+        recv.read_exact(&mut head_bytes)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-        Packet::decode_v1(&bytes).map_err(|e| TransportError::StreamError(e.to_string()))
+            
+        let header = PacketHeader::decode_v1(&head_bytes)
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+            
+        let mut body = vec![0u8; header.body_len as usize];
+        recv.read_exact(&mut body)
+            .await
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+            
+        Ok(Packet { 
+            header, 
+            body: Bytes::from(body),
+        })
     }
 }

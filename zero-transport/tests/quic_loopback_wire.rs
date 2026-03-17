@@ -14,8 +14,8 @@ async fn quic_loopback_sends_and_receives_framed_packet() {
     // accept one connection
     let accept_task = tokio::spawn(async move {
         let conn = server.accept().await.expect("accept");
-        let (_send, recv) = conn.accept_bi().await.expect("accept_bi");
-        let pkt = QuicTransport::recv_packet(recv).await.expect("recv_packet");
+        let (_send, mut recv) = conn.accept_bi().await.expect("accept_bi");
+        let pkt = QuicTransport::recv_packet(&mut recv).await.expect("recv_packet");
         pkt
     });
 
@@ -28,7 +28,13 @@ async fn quic_loopback_sends_and_receives_framed_packet() {
         sender_node_id: [0u8; 32],
         receiver_node_id: [9u8; 32],
     };
-    QuicTransport::send_packet(&conn, header.clone(), Bytes::from_static(b"hello"))
+    
+    let (mut send, _recv) = conn.open_bi().await.expect("open_bi");
+    let pkt = zero_wire::Packet {
+        header: header.clone(),
+        body: Bytes::from_static(b"hello"),
+    };
+    QuicTransport::send_packet(&mut send, &pkt)
         .await
         .expect("send_packet");
 

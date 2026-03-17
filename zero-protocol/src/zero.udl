@@ -9,18 +9,18 @@ interface ZeroNode {
     [Throws=ZeroError]
     constructor();
 
-    /// Connect to the peer-to-peer network
+    /// Connect to the DHT network and start listening.
     [Throws=ZeroError]
     void connect();
 
-    /// Add a new contact by their Base58 ZERO ID string
+    /// Add a contact by their String ZERO ID.
     [Throws=ZeroError]
     ZeroContact add_contact(string zero_id_str);
 };
 
-/// A friend/contact connection
+/// A connected ZERO contact.
 interface ZeroContact {
-    /// Send an end-to-end encrypted message
+    /// Send a text message to this contact.
     [Throws=ZeroError]
     void send_message(string msg);
 };
@@ -31,5 +31,6 @@ enum ZeroError {
     "IdentityError",
     "HandshakeFailed",
     "ConnectionFailed",
-    "InvalidPayload"
+    "InvalidPayload",
+    "Custom"
 };

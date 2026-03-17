@@ -14,6 +14,9 @@ pub enum GroupError {
     /// Member not found.
     #[error("Member not found")]
     MemberNotFound,
+    /// Not an admin.
+    #[error("Action requires admin privileges")]
+    NotAdmin,
     /// Crypto error.
     #[error("Crypto error: {0}")]
     CryptoError(String),

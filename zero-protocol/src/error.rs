@@ -17,10 +17,25 @@ pub enum ZeroError {
     /// Invalid payload size/format.
     #[error("Invalid payload")]
     InvalidPayload,
+    /// Generic/Custom error message.
+    #[error("Error: {0}")]
+    Custom(String),
 }
 
 impl From<zero_identity::IdentityError> for ZeroError {
     fn from(e: zero_identity::IdentityError) -> Self {
         ZeroError::IdentityError(e.to_string())
+    }
+}
+
+impl From<zero_transport::error::TransportError> for ZeroError {
+    fn from(_e: zero_transport::error::TransportError) -> Self {
+        ZeroError::ConnectionFailed
+    }
+}
+
+impl From<zero_ratchet::error::RatchetError> for ZeroError {
+    fn from(e: zero_ratchet::error::RatchetError) -> Self {
+        ZeroError::Custom(e.to_string())
     }
 }
