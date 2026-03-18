@@ -20,10 +20,14 @@ async fn tcp_tls_loopback_sends_and_receives_framed_packet() -> Result<(), Trans
         packet_type: PacketType::ZrMessage,
         flags: PacketFlags(PacketFlags::SEALED_SENDER),
         body_len: 5,
+    };
+    let pkt = zero_wire::Packet {
+        header: header.clone(),
         sender_node_id: [0u8; 32],
         receiver_node_id: [1u8; 32],
+        body: Bytes::from_static(b"hello"),
     };
-    TcpTlsTransport::send_packet(&mut client_tls, header.clone(), Bytes::from_static(b"hello")).await?;
+    TcpTlsTransport::send_packet(&mut client_tls, &pkt).await?;
 
     let pkt = server_task.await.expect("join");
     assert_eq!(pkt.body.as_ref(), b"hello");

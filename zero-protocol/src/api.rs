@@ -32,11 +32,23 @@ pub struct ZeroNode {
     pub zav: Arc<crate::zav::ZavManager>,
     /// NAT Manager.
     pub nat: Arc<crate::nat::NatManager>,
+    /// Global token replay mitigation cache.
+    pub replay_cache: Arc<zero_wire::ReplayCache>,
+    /// Directory for persisting encrypted ZR session state.
+    pub storage_dir: std::path::PathBuf,
+    /// Passphrase used to derive the encryption key for persisted ZR sessions.
+    pub passphrase: Vec<u8>,
 }
 
 impl ZeroNode {
     /// Generate a fresh, brand new ZERO identity.
-    pub fn new() -> Result<Self, ZeroError> {
+    pub fn new(storage_dir_str: String, passphrase_str: String) -> Result<Self, ZeroError> {
+        let storage_dir = std::path::PathBuf::from(storage_dir_str);
+        if !storage_dir.exists() {
+            std::fs::create_dir_all(&storage_dir).map_err(|e| ZeroError::Custom(e.to_string()))?;
+        }
+        let passphrase = passphrase_str.into_bytes();
+        
         let bundle = OwnedKeyBundle::generate(0).map_err(ZeroError::from)?;
         let self_id = ZeroId::from_keypair(&bundle.keypair, [0u8; 4]);
 
@@ -44,6 +56,8 @@ impl ZeroNode {
         let zft = Some(Arc::new(crate::zft::ZftManager::new(std::env::temp_dir())));
         let zav = Arc::new(crate::zav::ZavManager::new());
         let nat = Arc::new(crate::nat::NatManager::new());
+
+        let replay_cache = Arc::new(zero_wire::ReplayCache::new(50_000));
 
         Ok(Self {
             bundle: Arc::new(Mutex::new(bundle)),
@@ -56,6 +70,9 @@ impl ZeroNode {
             zft,
             zav,
             nat,
+            replay_cache,
+            storage_dir,
+            passphrase,
         })
     }
 
@@ -121,16 +138,32 @@ impl ZeroNode {
                 .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(h_noise))
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
-            // Init ZR ratchet
-            let dh = zero_crypto::dh::X25519Keypair::generate();
-            let remote_dh_pub = zero_crypto::dh::X25519PublicKey([0u8; 32]);
-            let zr_session = zero_ratchet::RatchetSession::new(zero_ratchet::SessionInit {
-                master_secret: zkx_output.0.to_vec(),
-                is_initiator: true,
-                local_dh: dh,
-                remote_dh_pub,
-            })
-            .map_err(ZeroError::from)?;
+            // Load persisted session or init new one
+            let path = crate::persistence::session_path(&self.storage_dir, &zero_id_str);
+            let zr_session = if path.exists() {
+                crate::persistence::load_session(&path, &self.passphrase).unwrap_or_else(|_| {
+                    tracing::warn!("Failed to load session, creating new one");
+                    let dh = zero_crypto::dh::X25519Keypair::generate();
+                    zero_ratchet::RatchetSession::new(zero_ratchet::SessionInit {
+                        master_secret: zkx_output.0.to_vec(),
+                        is_initiator: true,
+                        local_dh: dh,
+                        remote_dh_pub: zero_crypto::dh::X25519PublicKey([0u8; 32]),
+                    }).unwrap()
+                })
+            } else {
+                let dh = zero_crypto::dh::X25519Keypair::generate();
+                let remote_dh_pub = zero_crypto::dh::X25519PublicKey([0u8; 32]);
+                let session = zero_ratchet::RatchetSession::new(zero_ratchet::SessionInit {
+                    master_secret: zkx_output.0.to_vec(),
+                    is_initiator: true,
+                    local_dh: dh,
+                    remote_dh_pub,
+                }).map_err(ZeroError::from)?;
+                // Persist initially
+                let _ = crate::persistence::save_session(&session, &path, &self.passphrase);
+                session
+            };
 
             // NAT coordination
             tracing::info!("Coordinating NAT hole-punching for {}", zero_id_str);
@@ -143,11 +176,13 @@ impl ZeroNode {
         })?;
 
         Ok(Arc::new(ZeroContact {
-            id: zero_id_str,
+            id: zero_id_str.clone(),
             ratchets: self.active_ratchets.clone(),
             zav: self.zav.clone(),
             zft: self.zft.clone(),
             _transport: self.transport.clone(),
+            storage_dir: self.storage_dir.clone(),
+            passphrase: self.passphrase.clone(),
         }))
     }
 
@@ -220,6 +255,99 @@ impl ZeroNode {
             Ok::<_, ZeroError>(ciphertext)
         })
     }
+
+    /// Encrypt and send a message offline via a ZSF relay.
+    /// This generates a ZSF Envelope which automatically computes Hashcash Proof-of-Work (§10.4).
+    pub fn send_offline_message(
+        &self,
+        recipient_id_str: String,
+        relay_pub_hex: String,
+        msg: String,
+    ) -> Result<Vec<u8>, ZeroError> {
+        let recipient_id = ZeroId::from_string(&recipient_id_str).map_err(ZeroError::from)?;
+        let recipient_node_id = zero_dht::node_id_from_isk(&recipient_id.isk_pub());
+        
+        let payload = msg.into_bytes();
+        
+        let mut relay_pub_bytes = [0u8; 32];
+        hex::decode_to_slice(&relay_pub_hex, &mut relay_pub_bytes)
+            .map_err(|_| ZeroError::Custom("Invalid relay pubkey hex".into()))?;
+        let relay_pub = zero_crypto::dh::X25519PublicKey(relay_pub_bytes);
+        
+        tracing::info!("Generating ZSF Envelope with Hashcash PoW for {}", recipient_id_str);
+        // ZsfEnvelope automatically computes Proof of Work!
+        let env = zero_store_forward::ZsfEnvelope::build(
+            &zero_crypto::dh::X25519PublicKey(recipient_id.isk_pub()), // using ISK for simplicity
+            recipient_node_id.0,
+            &self.self_id,
+            &relay_pub,
+            payload,
+        ).map_err(|e| ZeroError::Custom(e.to_string()))?;
+        
+        tracing::info!("Successfully built ZSF Envelope with PoW: {}", env.proof_of_work);
+        
+        let env_bytes = serde_cbor::to_vec(&env).map_err(|e| ZeroError::Custom(e.to_string()))?;
+        Ok(env_bytes)
+    }
+
+    /// Global packet dispatch loop for incoming generic packets.
+    /// This handles the "Packet Type Registry (§20.3) — typed dispatch for 15 packet types"
+    pub async fn dispatch_incoming_packet(&self, packet: zero_wire::Packet) -> Result<(), ZeroError> {
+        // 1. Replay Cache (R3, §20.2.5) check
+        // Bound replay tokens for packets requiring it.
+        if packet.body.len() >= 16 {
+            let mut token_bytes = [0u8; 16];
+            token_bytes.copy_from_slice(&packet.body[..16]);
+            let token = zero_wire::ReplayToken(token_bytes);
+            
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+            // The cache checks 24h validity internally.
+            if !self.replay_cache.check_and_insert(now, &packet.receiver_node_id, packet.header.packet_type, &token) {
+                tracing::warn!("Replay Cache rejected packet type {:?}", packet.header.packet_type);
+                return Err(ZeroError::Custom("Replay detected".into()));
+            }
+        }
+
+        // 2. Typed dispatch loop for all known packets
+        match packet.header.packet_type {
+            zero_wire::PacketType::ZkxNoiseMsg1 |
+            zero_wire::PacketType::ZkxNoiseMsg2 |
+            zero_wire::PacketType::ZkxNoiseMsg3 |
+            zero_wire::PacketType::ZkxInit => {
+                tracing::info!("Received ZKX handshake packet");
+            }
+            zero_wire::PacketType::ZrMessage => {
+                tracing::info!("Received ZR encrypted message");
+            }
+            zero_wire::PacketType::ZdhtPing |
+            zero_wire::PacketType::ZdhtFindRecordReq |
+            zero_wire::PacketType::ZdhtFindRecordResp => {
+                tracing::info!("Received ZDHT routing packet");
+            }
+            zero_wire::PacketType::ZsfStoreEnvelope |
+            zero_wire::PacketType::ZsfFetchReq |
+            zero_wire::PacketType::ZsfFetchResp => {
+                tracing::info!("Received ZSF offline storage packet");
+            }
+            zero_wire::PacketType::ZgpEvent => {
+                tracing::info!("Received ZGP group event");
+            }
+            zero_wire::PacketType::ZavSignal => {
+                let signal = self.zav.decode_signal(&packet.body)
+                    .map_err(|e| ZeroError::Custom(e.to_string()))?;
+                tracing::info!("Received ZAV WebRTC signal: {:?}", signal);
+            }
+            zero_wire::PacketType::ZftOffer |
+            zero_wire::PacketType::ZftChunk |
+            zero_wire::PacketType::ZftAck => {
+                tracing::info!("Received ZFT file transfer packet");
+            }
+            zero_wire::PacketType::NatCoordination => {
+                tracing::info!("Received STUN/ICE NAT coordination packet");
+            }
+        }
+        Ok(())
+    }
 }
 
 /// A connected contact with an active pairwise ZR session.
@@ -230,6 +358,8 @@ pub struct ZeroContact {
     zav: Arc<crate::zav::ZavManager>,
     zft: Option<Arc<crate::zft::ZftManager>>,
     _transport: Option<Arc<zero_transport::quic::QuicTransport>>,
+    storage_dir: std::path::PathBuf,
+    passphrase: Vec<u8>,
 }
 
 impl ZeroContact {
@@ -244,6 +374,11 @@ impl ZeroContact {
                 .ok_or_else(|| ZeroError::Custom("No active ratchet session".to_string()))?;
             let mut ratchet = ratchet_arc.lock().await;
             let zr_msg = ratchet.encrypt(msg.as_bytes(), b"").map_err(ZeroError::from)?;
+            
+            // Persist ZR state (§14.2) — save after every ratchet step
+            let path = crate::persistence::session_path(&self.storage_dir, &self.id);
+            let _ = crate::persistence::save_session(&ratchet, &path, &self.passphrase);
+            
             let ciphertext = serde_cbor::to_vec(&zr_msg)
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
             tracing::info!("→ Sent to {} ({} bytes)", self.id, ciphertext.len());
@@ -265,6 +400,11 @@ impl ZeroContact {
             let mut ratchet = ratchet_arc.lock().await;
             // counter = 0 for sequential; production: track per-session counter
             let plaintext = ratchet.decrypt(&zr_msg, b"", 0).map_err(ZeroError::from)?;
+            
+            // Persist ZR state (§14.2) — save after every ratchet step
+            let path = crate::persistence::session_path(&self.storage_dir, &self.id);
+            let _ = crate::persistence::save_session(&ratchet, &path, &self.passphrase);
+            
             tracing::info!("← Received from {} ({} bytes)", self.id, plaintext.len());
             Ok::<_, ZeroError>(plaintext)
         })

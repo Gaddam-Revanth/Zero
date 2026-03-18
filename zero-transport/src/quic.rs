@@ -144,13 +144,25 @@ impl QuicTransport {
         let header = PacketHeader::decode_v1(&head_bytes)
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
             
+        let mut sender_node_id = [0u8; 32];
+        recv.read_exact(&mut sender_node_id)
+            .await
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+            
+        let mut receiver_node_id = [0u8; 32];
+        recv.read_exact(&mut receiver_node_id)
+            .await
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
+            
         let mut body = vec![0u8; header.body_len as usize];
         recv.read_exact(&mut body)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
             
         Ok(Packet { 
-            header, 
+            header,
+            sender_node_id,
+            receiver_node_id,
             body: Bytes::from(body),
         })
     }

@@ -7,7 +7,7 @@ namespace zero {
 interface ZeroNode {
     /// Generate a fresh ZERO identity
     [Throws=ZeroError]
-    constructor();
+    constructor(string storage_dir, string passphrase);
 
     /// Connect to the DHT network and start listening.
     [Throws=ZeroError]
@@ -32,6 +32,10 @@ interface ZeroNode {
     /// Encrypt and send a group message. Returns the ciphertext.
     [Throws=ZeroError]
     bytes send_group_message(string group_id_hex, string msg);
+
+    /// Encrypt and send a message offline via a ZSF relay.
+    [Throws=ZeroError]
+    bytes send_offline_message(string recipient_id_str, string relay_pub_hex, string msg);
 };
 
 /// A connected ZERO contact with an active pairwise session.

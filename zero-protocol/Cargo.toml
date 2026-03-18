@@ -20,8 +20,10 @@ zero-transport     = { path = "../zero-transport" }
 zero-relay         = { path = "../zero-relay" }
 zero-store-forward = { path = "../zero-store-forward" }
 zero-groups        = { path = "../zero-groups" }
+zero-wire          = { path = "../zero-wire" }
 uniffi             = { workspace = true }
 tokio              = { workspace = true }
+hex                = "0.4"
 serde              = { workspace = true }
 serde_cbor         = { workspace = true }
 thiserror          = { workspace = true }

@@ -25,13 +25,13 @@ async fn quic_loopback_sends_and_receives_framed_packet() {
         packet_type: PacketType::ZrMessage,
         flags: PacketFlags(PacketFlags::SEALED_SENDER),
         body_len: 5,
-        sender_node_id: [0u8; 32],
-        receiver_node_id: [9u8; 32],
     };
     
     let (mut send, _recv) = conn.open_bi().await.expect("open_bi");
     let pkt = zero_wire::Packet {
         header: header.clone(),
+        sender_node_id: [0u8; 32],
+        receiver_node_id: [9u8; 32],
         body: Bytes::from_static(b"hello"),
     };
     QuicTransport::send_packet(&mut send, &pkt)

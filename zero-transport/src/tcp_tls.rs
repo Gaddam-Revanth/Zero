@@ -4,13 +4,13 @@
 //! Uses exact same stream multiplexing semantics (via a custom multiplexer or yamux).
 
 use crate::error::TransportError;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_rustls::{TlsAcceptor, TlsConnector};
-use zero_wire::{Packet, PacketHeader};
+use zero_wire::Packet;
 
 use std::sync::Once;
 
@@ -85,11 +85,10 @@ impl TcpTlsTransport {
     }
 
     /// Send a framed packet on a TLS stream.
-    pub async fn send_packet<S>(stream: &mut S, header: PacketHeader, body: Bytes) -> Result<(), TransportError>
+    pub async fn send_packet<S>(stream: &mut S, pkt: &Packet) -> Result<(), TransportError>
     where
         S: AsyncWriteExt + Unpin,
     {
-        let pkt = Packet { header, body };
         let bytes = pkt.encode_v1().map_err(|e| TransportError::StreamError(e.to_string()))?;
         let mut frame = BytesMut::with_capacity(4 + bytes.len());
         frame.put_u32(bytes.len() as u32);

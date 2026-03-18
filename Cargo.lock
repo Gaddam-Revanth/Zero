@@ -3081,6 +3081,7 @@ dependencies = [
  "bytes",
  "chrono",
  "dashmap",
+ "hex",
  "mdns-sd",
  "parking_lot",
  "proptest",
@@ -3101,6 +3102,7 @@ dependencies = [
  "zero-relay",
  "zero-store-forward",
  "zero-transport",
+ "zero-wire",
 ]
 
 [[package]]

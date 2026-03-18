@@ -17,9 +17,8 @@ pub const MAGIC: [u8; 4] = *b"ZERO";
 /// - flags u16
 /// - header_len u16 (must equal HEADER_LEN_V1)
 /// - body_len u32
-/// - sender_node_id [32]
-/// - receiver_node_id [32]
-pub const HEADER_LEN_V1: u16 = 82;
+/// - padding [14]
+pub const HEADER_LEN_V1: u16 = 32;
 
 /// Maximum generic body length (1 MiB).
 pub const MAX_BODY_LEN: u32 = 1_048_576;
@@ -37,12 +36,8 @@ pub struct PacketHeader {
     pub packet_type: PacketType,
     /// Flags.
     pub flags: PacketFlags,
-    /// Body length.
+    /// Body length (includes sender and receiver IDs in the total body parsing).
     pub body_len: u32,
-    /// Sender node id (all-zero when sealed sender).
-    pub sender_node_id: [u8; 32],
-    /// Receiver node id.
-    pub receiver_node_id: [u8; 32],
 }
 
 impl PacketHeader {
@@ -70,8 +65,7 @@ impl PacketHeader {
         buf.put_u16(self.flags.0);
         buf.put_u16(HEADER_LEN_V1);
         buf.put_u32(self.body_len);
-        buf.put_slice(&self.sender_node_id);
-        buf.put_slice(&self.receiver_node_id);
+        buf.put_slice(&[0u8; 14]); // 14 bytes padding to equal 32 bytes
         buf.freeze()
     }
 
@@ -102,42 +96,45 @@ impl PacketHeader {
         }
         let body_len = b.get_u32();
 
-        let mut sender = [0u8; 32];
-        b.copy_to_slice(&mut sender);
-        let mut receiver = [0u8; 32];
-        b.copy_to_slice(&mut receiver);
+        // skip 14 bytes padding
+        b.advance(14);
 
         let hdr = PacketHeader {
             version,
             packet_type,
             flags,
             body_len,
-            sender_node_id: sender,
-            receiver_node_id: receiver,
         };
         hdr.validate_v1()?;
         Ok(hdr)
     }
 }
 
-/// A complete packet (header + body).
+/// A complete packet (header + dynamic routing IDs + body).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Packet {
-    /// Header.
+    /// 32-byte Header.
     pub header: PacketHeader,
+    /// Sender node id (all-zero when sealed sender).
+    pub sender_node_id: [u8; 32],
+    /// Receiver node id.
+    pub receiver_node_id: [u8; 32],
     /// Body bytes.
     pub body: Bytes,
 }
 
 impl Packet {
-    /// Encode packet to bytes (header + body).
+    /// Encode packet to bytes (header + sender + receiver + body).
     pub fn encode_v1(&self) -> Result<Bytes, WireError> {
         self.header.validate_v1()?;
         if self.body.len() != self.header.body_len as usize {
             return Err(WireError::Truncated);
         }
-        let mut buf = BytesMut::with_capacity(HEADER_LEN_V1 as usize + self.body.len());
+        let total_size = HEADER_LEN_V1 as usize + 64 + self.body.len();
+        let mut buf = BytesMut::with_capacity(total_size);
         buf.put_slice(&self.header.encode_v1());
+        buf.put_slice(&self.sender_node_id);
+        buf.put_slice(&self.receiver_node_id);
         buf.put_slice(&self.body);
         Ok(buf.freeze())
     }
@@ -145,12 +142,19 @@ impl Packet {
     /// Decode packet from bytes.
     pub fn decode_v1(b: &[u8]) -> Result<Self, WireError> {
         let header = PacketHeader::decode_v1(b)?;
-        let total = HEADER_LEN_V1 as usize + header.body_len as usize;
+        let total = HEADER_LEN_V1 as usize + 64 + header.body_len as usize;
         if b.len() < total {
             return Err(WireError::Truncated);
         }
-        let body = Bytes::copy_from_slice(&b[HEADER_LEN_V1 as usize..total]);
-        Ok(Packet { header, body })
+        
+        // Extract routing IDs
+        let mut sender = [0u8; 32];
+        sender.copy_from_slice(&b[HEADER_LEN_V1 as usize .. HEADER_LEN_V1 as usize + 32]);
+        let mut receiver = [0u8; 32];
+        receiver.copy_from_slice(&b[HEADER_LEN_V1 as usize + 32 .. HEADER_LEN_V1 as usize + 64]);
+        
+        let body = Bytes::copy_from_slice(&b[HEADER_LEN_V1 as usize + 64 .. total]);
+        Ok(Packet { header, sender_node_id: sender, receiver_node_id: receiver, body })
     }
 }
 
