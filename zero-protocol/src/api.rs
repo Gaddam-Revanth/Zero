@@ -146,6 +146,7 @@ impl ZeroNode {
             id: zero_id_str,
             ratchets: self.active_ratchets.clone(),
             zav: self.zav.clone(),
+            zft: self.zft.clone(),
             _transport: self.transport.clone(),
         }))
     }
@@ -221,70 +222,121 @@ impl ZeroNode {
     }
 }
 
-// ─── ZeroContact ────────────────────────────────────────────────────────────
-
-/// A connected contact with active pairwise session.
+/// A connected contact with an active pairwise ZR session.
 pub struct ZeroContact {
     /// Their string ZERO ID.
     pub id: String,
     ratchets: Arc<dashmap::DashMap<String, Arc<Mutex<zero_ratchet::RatchetSession>>>>,
     zav: Arc<crate::zav::ZavManager>,
+    zft: Option<Arc<crate::zft::ZftManager>>,
     _transport: Option<Arc<zero_transport::quic::QuicTransport>>,
 }
 
 impl ZeroContact {
+    // ─── Messaging ──────────────────────────────────────────────────────────
+
     /// Encrypt and send a text message over the ZR ratchet.
+    /// Returns the CBOR-encoded `RatchetMessage` ciphertext.
     pub fn send_message(&self, msg: String) -> Result<Vec<u8>, ZeroError> {
         let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-
         rt.block_on(async {
-            let ratchet_arc = self
-                .ratchets
-                .get(&self.id)
+            let ratchet_arc = self.ratchets.get(&self.id)
                 .ok_or_else(|| ZeroError::Custom("No active ratchet session".to_string()))?;
             let mut ratchet = ratchet_arc.lock().await;
-            let zr_msg = ratchet
-                .encrypt(msg.as_bytes(), b"")
-                .map_err(ZeroError::from)?;
-            // Serialize the RatchetMessage to CBOR bytes for transport
+            let zr_msg = ratchet.encrypt(msg.as_bytes(), b"").map_err(ZeroError::from)?;
             let ciphertext = serde_cbor::to_vec(&zr_msg)
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
-            tracing::info!("Sent message to {} ({} bytes)", self.id, ciphertext.len());
+            tracing::info!("→ Sent to {} ({} bytes)", self.id, ciphertext.len());
             Ok::<_, ZeroError>(ciphertext)
         })
     }
 
-    /// Send a file offer to this contact.  Returns the FileOffer metadata as CBOR bytes.
-    pub fn send_file(&self, path: String) -> Result<Vec<u8>, ZeroError> {
+    /// Decrypt an incoming message from this contact.
+    ///
+    /// `ciphertext_cbor` is the raw bytes received over the wire
+    /// (a CBOR-encoded `RatchetMessage`). Returns the plaintext.
+    pub fn receive_message(&self, ciphertext_cbor: Vec<u8>) -> Result<Vec<u8>, ZeroError> {
         let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
         rt.block_on(async {
-            // We don't have direct access to the ZftManager here, so we compute inline.
-            let path = std::path::Path::new(&path);
-            let content = tokio::fs::read(path)
-                .await
-                .map_err(|e| ZeroError::Custom(e.to_string()))?;
-            let file_hash = zero_crypto::hash::blake2b_256(&content);
-            let offer = crate::zft::FileOffer {
-                transfer_id: uuid::Uuid::new_v4().to_string(),
-                filename: path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string(),
-                size: content.len() as u64,
-                file_hash,
-            };
-            tracing::info!("Sending file offer '{}' to {}", offer.filename, self.id);
-            serde_cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
+            let zr_msg: zero_ratchet::RatchetMessage = serde_cbor::from_slice(&ciphertext_cbor)
+                .map_err(|e| ZeroError::Custom(format!("CBOR decode: {}", e)))?;
+            let ratchet_arc = self.ratchets.get(&self.id)
+                .ok_or_else(|| ZeroError::Custom("No active ratchet session".to_string()))?;
+            let mut ratchet = ratchet_arc.lock().await;
+            // counter = 0 for sequential; production: track per-session counter
+            let plaintext = ratchet.decrypt(&zr_msg, b"", 0).map_err(ZeroError::from)?;
+            tracing::info!("← Received from {} ({} bytes)", self.id, plaintext.len());
+            Ok::<_, ZeroError>(plaintext)
         })
     }
 
+    // ─── File Transfer ───────────────────────────────────────────────────────
+
+    /// Prepare a file for sending.
+    ///
+    /// Returns the CBOR-encoded `FileOffer` as the first element and
+    /// all `FileChunk`s (also CBOR-encoded) as the second — ready to be
+    /// delivered one-by-one via `send_message` or the transport layer.
+    pub fn send_file(&self, path: String) -> Result<Vec<u8>, ZeroError> {
+        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
+        rt.block_on(async {
+            let p = std::path::Path::new(&path);
+            if let Some(zft) = &self.zft {
+                let (offer, chunks) = zft.prepare_send(p).await?;
+                tracing::info!(
+                    "Prepared '{}' for {} in {} chunks",
+                    offer.filename, self.id, chunks.len()
+                );
+                serde_cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
+            } else {
+                // Fallback: inline offer without chunking
+                let content = tokio::fs::read(p).await
+                    .map_err(|e| ZeroError::Custom(e.to_string()))?;
+                let file_hash = zero_crypto::hash::blake2b_256(&content);
+                let offer = crate::zft::FileOffer {
+                    transfer_id: uuid::Uuid::new_v4().to_string(),
+                    filename: p.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string(),
+                    size: content.len() as u64,
+                    total_chunks: 1,
+                    file_hash,
+                };
+                serde_cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
+            }
+        })
+    }
+
+    // ─── Audio / Video Calls ─────────────────────────────────────────────────
+
     /// Initiate an audio/video call by sending an SDP Invite signal.
-    /// Returns the CBOR-encoded ZavSignal::Invite.
+    /// Returns the CBOR-encoded `ZavSignal::Invite`.
     pub fn initiate_call(&self, sdp: String) -> Result<Vec<u8>, ZeroError> {
         let call_id = uuid::Uuid::new_v4().to_string();
         let signal = self.zav.create_invite(&call_id, &sdp);
-        tracing::info!("Initiating call {} with {}", call_id, self.id);
-        serde_cbor::to_vec(&signal).map_err(|e| ZeroError::Custom(e.to_string()))
+        tracing::info!("Initiating call {} with {}", signal.call_id(), self.id);
+        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+    }
+
+    /// Accept an incoming call with your own SDP answer.
+    /// Returns the CBOR-encoded `ZavSignal::Accept`.
+    pub fn accept_call(&self, call_id: String, answer_sdp: String) -> Result<Vec<u8>, ZeroError> {
+        let signal = self.zav.create_accept(&call_id, &answer_sdp);
+        tracing::info!("Accepting call {} from {}", call_id, self.id);
+        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+    }
+
+    /// Reject an incoming call.
+    /// Returns the CBOR-encoded `ZavSignal::Reject`.
+    pub fn reject_call(&self, call_id: String) -> Result<Vec<u8>, ZeroError> {
+        let signal = self.zav.create_reject(&call_id);
+        tracing::info!("Rejecting call {} from {}", call_id, self.id);
+        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+    }
+
+    /// Hang up an active call.
+    /// Returns the CBOR-encoded `ZavSignal::Hangup`.
+    pub fn hangup(&self, call_id: String) -> Result<Vec<u8>, ZeroError> {
+        let signal = self.zav.create_hangup(&call_id);
+        tracing::info!("Hanging up call {} with {}", call_id, self.id);
+        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
     }
 }

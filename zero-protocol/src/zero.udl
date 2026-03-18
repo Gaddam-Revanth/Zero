@@ -40,6 +40,10 @@ interface ZeroContact {
     [Throws=ZeroError]
     bytes send_message(string msg);
 
+    /// Decrypt an incoming message. Input is raw CBOR ciphertext from the wire.
+    [Throws=ZeroError]
+    bytes receive_message(bytes ciphertext_cbor);
+
     /// Send a file offer to this contact. Returns the FileOffer as CBOR bytes.
     [Throws=ZeroError]
     bytes send_file(string path);
@@ -47,6 +51,18 @@ interface ZeroContact {
     /// Initiate an audio/video call with a WebRTC SDP offer.
     [Throws=ZeroError]
     bytes initiate_call(string sdp);
+
+    /// Accept an incoming call with your own SDP answer.
+    [Throws=ZeroError]
+    bytes accept_call(string call_id, string answer_sdp);
+
+    /// Reject an incoming call.
+    [Throws=ZeroError]
+    bytes reject_call(string call_id);
+
+    /// Hang up an active call.
+    [Throws=ZeroError]
+    bytes hangup(string call_id);
 };
 
 /// High-level errors exposed to Kotlin/Swift
