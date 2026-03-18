@@ -1,0 +1,59 @@
+cargo :     Checking 
+zero-groups v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-groups)
+At line:1 char:1
++ cargo check 
+--workspace 2>&1 | 
+Out-File -FilePath 
+spec_final.txt -Enc ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo     
+         : 
+NotSpecified: (    Che 
+   cking 
+ze...RO\zero-group    
+s):String) [], 
+RemoteExc    eption
+    + 
+FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+    Checking 
+zero-protocol v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-protocol)
+error[E0433]: failed 
+to resolve: use of 
+unresolved module or 
+unlinked crate `rand`
+  --> zero-protocol\src
+\nat.rs:55:43
+   |
+55 |     let txn_id: 
+Vec<u8> = 
+(0..12).map(|_| rand::r
+andom::<u8>()).collect(
+);
+   |                   
+                       
+ ^^^^ use of 
+unresolved module or 
+unlinked crate `rand`
+   |
+   = help: if you 
+wanted to use a crate 
+named `rand`, use 
+`cargo add rand` to 
+add it to your 
+`Cargo.toml`
+
+For more information 
+about this error, try 
+`rustc --explain 
+E0433`.
+error: could not 
+compile 
+`zero-protocol` (lib) 
+due to 1 previous error

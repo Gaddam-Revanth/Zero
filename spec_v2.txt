@@ -1,0 +1,44 @@
+cargo :     Checking 
+zero-protocol v1.0.0 (C:\User
+s\Revanth\Downloads\ZERO\zero
+-protocol)
+At line:1 char:1
++ cargo check --workspace 
+2>&1 | Out-File -FilePath 
+spec_v2.txt -Encodi ...
++ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (    Che  
+  cking ze...\zero-protoco   
+ l):String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+error[E0433]: failed to 
+resolve: use of unresolved 
+module or unlinked crate 
+`getrandom`
+  --> 
+zero-protocol\src\nat.rs:56:5
+   |
+56 |     
+getrandom::getrandom(&mut 
+txn_id)
+   |     ^^^^^^^^^ use of 
+unresolved module or 
+unlinked crate `getrandom`
+   |
+   = help: if you wanted to 
+use a crate named 
+`getrandom`, use `cargo add 
+getrandom` to add it to your 
+`Cargo.toml`
+
+For more information about 
+this error, try `rustc 
+--explain E0433`.
+error: could not compile 
+`zero-protocol` (lib) due to 
+1 previous error

@@ -11,6 +11,7 @@ pub mod discovery;
 pub mod zft;
 pub mod zav;
 pub mod nat;
+pub mod persistence;
 
 pub use api::{init_logger, ZeroNode, ZeroContact};
 pub use error::ZeroError;

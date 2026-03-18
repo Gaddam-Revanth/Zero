@@ -1,6 +1,10 @@
 //! ZFT — ZERO File Transfer
 //!
-//! Provides chunked, hash-verified file transfer with resume capability.
+//! Provides chunked, hash-verified file transfer with full pause/resume capability.
+//! Implements the complete §13 spec:
+//! - Per-chunk BLAKE2b integrity
+//! - Resume via `start_chunk` field (receiver tells sender where to continue)
+//! - Final file-hash verification after reassembly
 #![allow(missing_docs)]
 
 use std::path::{Path, PathBuf};
@@ -22,6 +26,25 @@ pub struct FileOffer {
     pub file_hash: [u8; 32],
 }
 
+/// Acceptance from the receiver, optionally requesting resume from a chunk index.
+/// Per §13.3: `start_chunk > 0` enables resume.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileAccept {
+    pub transfer_id: String,
+    /// The first chunk the receiver needs. 0 = start from beginning.
+    /// Set to `N` to resume from chunk N (already received 0..N-1).
+    pub start_chunk: u32,
+}
+
+/// A resume request sent on reconnect.
+/// Per §13.3: receiver sends this after reconnecting to a broken transfer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileResume {
+    pub transfer_id: String,
+    /// The index of the last successfully received chunk.
+    pub last_received_chunk: u32,
+}
+
 /// A single chunk of file data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileChunk {
@@ -29,15 +52,24 @@ pub struct FileChunk {
     pub index: u32,
     pub total: u32,
     pub data: Vec<u8>,
-    /// BLAKE2b-256 hash of this chunk's data for integrity.
+    /// BLAKE2b-256 hash of this chunk's data for per-chunk integrity.
     pub chunk_hash: [u8; 32],
 }
 
-/// Receipt sent after successfully receiving a chunk.
+/// Receipt sent by receiver after successfully receiving and verifying a chunk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChunkAck {
     pub transfer_id: String,
     pub index: u32,
+}
+
+/// Completion confirmation sent by receiver after full file assembly.
+/// Per §13.3: receiver sends this with the full file hash.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileComplete {
+    pub transfer_id: String,
+    /// BLAKE2b-256 hash of the fully reassembled file.
+    pub file_hash: [u8; 32],
 }
 
 /// An in-progress incoming transfer being reassembled.
@@ -49,9 +81,29 @@ pub struct IncomingTransfer {
 }
 
 impl IncomingTransfer {
-    /// Create a new incoming transfer from a received offer.
+    /// Create a new incoming transfer tracker from a received offer.
     pub fn new(offer: FileOffer) -> Self {
         Self { offer, received: HashMap::new() }
+    }
+
+    /// The index of the next chunk we need (for generating a resume request).
+    pub fn next_needed_chunk(&self) -> u32 {
+        // Return the first gap in our received sequence
+        for i in 0..self.offer.total_chunks {
+            if !self.received.contains_key(&i) {
+                return i;
+            }
+        }
+        self.offer.total_chunks
+    }
+
+    /// Build a FileResume request for this transfer after a reconnect.
+    pub fn build_resume(&self) -> FileResume {
+        let last = self.next_needed_chunk().saturating_sub(1);
+        FileResume {
+            transfer_id: self.offer.transfer_id.clone(),
+            last_received_chunk: last,
+        }
     }
 
     /// Accept an incoming chunk, verify its hash, and store it.
@@ -74,8 +126,7 @@ impl IncomingTransfer {
         self.received.len() as u32 == self.offer.total_chunks
     }
 
-    /// Reassemble all chunks into the final file bytes.
-    /// Call [`is_complete`] before calling this.
+    /// Reassemble all chunks into the final file bytes and verify the overall hash.
     pub fn reassemble(&self) -> Result<Vec<u8>, ZeroError> {
         if !self.is_complete() {
             return Err(ZeroError::Custom("Transfer not yet complete".to_string()));
@@ -86,15 +137,24 @@ impl IncomingTransfer {
                 .ok_or_else(|| ZeroError::Custom(format!("Missing chunk {}", i)))?;
             data.extend_from_slice(chunk);
         }
-        // Final integrity check
         let file_hash = blake2b_256(&data);
         if file_hash != self.offer.file_hash {
-            return Err(ZeroError::Custom("Final file hash mismatch — transfer corrupted".to_string()));
+            return Err(ZeroError::Custom(
+                "Final file hash mismatch — transfer is corrupted".to_string()
+            ));
         }
         Ok(data)
     }
-    
-    /// Save the reassembled file to disk.
+
+    /// Build a FileComplete confirmation after successful reassembly.
+    pub fn build_complete(&self, reassembled: &[u8]) -> FileComplete {
+        FileComplete {
+            transfer_id: self.offer.transfer_id.clone(),
+            file_hash: blake2b_256(reassembled),
+        }
+    }
+
+    /// Save the reassembled file to disk and return its path.
     pub async fn save_to(&self, dir: &Path) -> Result<PathBuf, ZeroError> {
         let data = self.reassemble()?;
         let dest = dir.join(&self.offer.filename);
@@ -105,7 +165,7 @@ impl IncomingTransfer {
     }
 }
 
-/// Manages file transfers for a node (both outgoing offers and incoming reassembly).
+/// Manages file transfers (both outgoing and incoming).
 pub struct ZftManager {
     download_dir: PathBuf,
     /// Tracks in-progress incoming transfers.
@@ -126,7 +186,9 @@ impl ZftManager {
         &self.download_dir
     }
 
-    /// Read a file and produce a [`FileOffer`] + all chunks ready to send.
+    /// Read a file and produce a FileOffer + all chunks ready to send.
+    /// Returns (offer, all_chunks) — caller sends the offer first, then chunks
+    /// starting from `start_chunk` (0 for fresh transfer, >0 for resume).
     pub async fn prepare_send(&self, path: &Path) -> Result<(FileOffer, Vec<FileChunk>), ZeroError> {
         let content = tokio::fs::read(path)
             .await
@@ -169,13 +231,18 @@ impl ZftManager {
         Ok((offer, chunks))
     }
 
-    /// Start tracking an incoming transfer once we receive the offer.
-    pub fn accept_offer(&self, offer: FileOffer) {
-        let transfer_id = offer.transfer_id.clone();
-        self.incoming.insert(transfer_id, IncomingTransfer::new(offer));
+    /// Filter the full chunk list to only include chunks from `start_chunk` onward.
+    /// Use after receiving a FileAccept or FileResume to honour resume requests.
+    pub fn chunks_from(chunks: Vec<FileChunk>, start_chunk: u32) -> Vec<FileChunk> {
+        chunks.into_iter().filter(|c| c.index >= start_chunk).collect()
     }
 
-    /// Process an incoming chunk for a tracked transfer.
+    /// Start tracking an incoming transfer once we receive the offer.
+    pub fn accept_offer(&self, offer: FileOffer) {
+        self.incoming.insert(offer.transfer_id.clone(), IncomingTransfer::new(offer));
+    }
+
+    /// Process an incoming chunk. Returns ChunkAck on success.
     pub fn process_chunk(&self, chunk: FileChunk) -> Result<ChunkAck, ZeroError> {
         let mut entry = self.incoming
             .get_mut(&chunk.transfer_id)
@@ -183,13 +250,22 @@ impl ZftManager {
         entry.receive_chunk(chunk)
     }
 
-    /// Finalize a complete incoming transfer — reassemble and save to disk.
-    pub async fn finalize_transfer(&self, transfer_id: &str) -> Result<PathBuf, ZeroError> {
+    /// Build a resume request for an interrupted transfer.
+    pub fn build_resume(&self, transfer_id: &str) -> Result<FileResume, ZeroError> {
         let entry = self.incoming
             .get(transfer_id)
             .ok_or_else(|| ZeroError::Custom("Unknown transfer ID".to_string()))?;
-        let dest = entry.save_to(&self.download_dir).await?;
-        drop(entry);
+        Ok(entry.build_resume())
+    }
+
+    /// Finalize a complete incoming transfer — reassemble, verify, and save to disk.
+    pub async fn finalize_transfer(&self, transfer_id: &str) -> Result<PathBuf, ZeroError> {
+        let dest = {
+            let entry = self.incoming
+                .get(transfer_id)
+                .ok_or_else(|| ZeroError::Custom("Unknown transfer ID".to_string()))?;
+            entry.save_to(&self.download_dir).await?
+        };
         self.incoming.remove(transfer_id);
         Ok(dest)
     }
