@@ -12,3 +12,4 @@ pub mod member;
 
 pub use error::GroupError;
 pub use group::GroupState;
+pub use member::MemberManager;

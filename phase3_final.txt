@@ -1,0 +1,117 @@
+cargo :    Compiling 
+zero-protocol v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-protocol)
+At line:1 char:1
++ cargo check 
+--workspace 2>&1 | 
+Out-File -FilePath 
+phase3_final.txt -E ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (   Compiling    
+ ze...\zero-protoco    
+l):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+error[E0308]: 
+mismatched types
+   --> C:\Users\Revanth
+\Downloads\ZERO\target\
+debug\build\zero-protoc
+ol-f468ca3d3c411ee7\out
+/zero.uniffi.rs:141:1
+    |
+141 | #[::uniffi::expor
+t_for_udl]
+    | ^^^^^^^^^^^^^^^^^
+^^^^^^^^^^ expected 
+`&str`, found `String`
+142 | impl r#ZeroNode {
+143 |     pub fn 
+r#invite_to_group(
+    |            
+----------------- 
+arguments to this 
+method are incorrect
+    |
+note: method defined 
+here
+   --> zero-protocol\sr
+c\api.rs:171:12
+    |
+171 |     pub fn 
+invite_to_group(&self, 
+group_id_hex: &str, 
+contact_id: String) -> 
+Result<(), ZeroError> {
+    |            
+^^^^^^^^^^^^^^^        
+------------------
+    = note: this error 
+originates in the 
+attribute macro `::unif
+fi::export_for_udl` 
+(in Nightly builds, 
+run with -Z 
+macro-backtrace for 
+more info)
+
+error[E0308]: 
+mismatched types
+   --> C:\Users\Revanth
+\Downloads\ZERO\target\
+debug\build\zero-protoc
+ol-f468ca3d3c411ee7\out
+/zero.uniffi.rs:162:1
+    |
+162 | #[::uniffi::expor
+t_for_udl]
+    | ^^^^^^^^^^^^^^^^^
+^^^^^^^^^^ expected 
+`&str`, found `String`
+163 | impl r#ZeroNode {
+164 |     pub fn 
+r#send_group_message(
+    |            
+-------------------- 
+arguments to this 
+method are incorrect
+    |
+note: method defined 
+here
+   --> zero-protocol\sr
+c\api.rs:194:12
+    |
+194 |     pub fn send_g
+roup_message(&self, 
+group_id_hex: &str, 
+msg: String) -> 
+Result<Vec<u8>, 
+ZeroError> {
+    |            
+^^^^^^^^^^^^^^^^^^     
+   ------------------
+    = note: this error 
+originates in the 
+attribute macro `::unif
+fi::export_for_udl` 
+(in Nightly builds, 
+run with -Z 
+macro-backtrace for 
+more info)
+
+For more information 
+about this error, try 
+`rustc --explain 
+E0308`.
+error: could not 
+compile 
+`zero-protocol` (lib) 
+due to 2 previous 
+errors

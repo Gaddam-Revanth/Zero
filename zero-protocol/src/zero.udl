@@ -13,16 +13,40 @@ interface ZeroNode {
     [Throws=ZeroError]
     void connect();
 
-    /// Add a contact by their String ZERO ID.
+    /// Search for a contact via onion-routed DHT lookup.
+    [Throws=ZeroError]
+    void private_lookup(string zero_id_str);
+
+    /// Add a contact by their String ZERO ID and perform ZKX handshake.
     [Throws=ZeroError]
     ZeroContact add_contact(string zero_id_str);
+
+    /// Create a new group chat. Returns the group ID as a hex string.
+    [Throws=ZeroError]
+    string create_group();
+
+    /// Invite a contact into an existing group.
+    [Throws=ZeroError]
+    void invite_to_group(string group_id_hex, string contact_id);
+
+    /// Encrypt and send a group message. Returns the ciphertext.
+    [Throws=ZeroError]
+    bytes send_group_message(string group_id_hex, string msg);
 };
 
-/// A connected ZERO contact.
+/// A connected ZERO contact with an active pairwise session.
 interface ZeroContact {
-    /// Send a text message to this contact.
+    /// Encrypt and send a text message over the ZR ratchet. Returns the ciphertext.
     [Throws=ZeroError]
-    void send_message(string msg);
+    bytes send_message(string msg);
+
+    /// Send a file offer to this contact. Returns the FileOffer as CBOR bytes.
+    [Throws=ZeroError]
+    bytes send_file(string path);
+
+    /// Initiate an audio/video call with a WebRTC SDP offer.
+    [Throws=ZeroError]
+    bytes initiate_call(string sdp);
 };
 
 /// High-level errors exposed to Kotlin/Swift
