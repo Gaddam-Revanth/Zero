@@ -4,8 +4,9 @@
 //!
 //! Improvements over the original Double Ratchet:
 //! - **Header encryption**: hides ratchet public key and message counters from relay servers
+//! - **Header encryption**: hides ratchet public keys from relay nodes
 //! - **BLAKE2b KDF chains**: faster than HMAC-SHA256 on 64-bit
-//! - **PQ ratchet step**: optional ML-KEM-512 re-encapsulation every 1,000 messages
+//! - **PQ ratchet step**: optional ML-KEM-768 re-encapsulation every 1,000 messages
 //!
 //! ## Security Properties:
 //! - Per-message forward secrecy (each message has unique key, deleted after use)

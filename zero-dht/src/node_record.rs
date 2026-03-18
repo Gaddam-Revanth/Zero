@@ -106,8 +106,12 @@ impl EncryptedNodeRecord {
         let nonce = AeadNonce::random();
         let plaintext = serde_cbor::to_vec(record)
             .map_err(|e| DhtError::SerializationError(e.to_string()))?;
+        let mut aad = Vec::new();
+        aad.extend_from_slice(b"ZERO-v1");
+        aad.extend_from_slice(&record.node_id.0);
+
         let mut ct_blob = nonce.0.to_vec();
-        let ct = encrypt(&aead_key, &nonce, &plaintext, &record.node_id.0)
+        let ct = encrypt(&aead_key, &nonce, &plaintext, &aad)
             .map_err(|e| DhtError::CryptoError(e.to_string()))?;
         ct_blob.extend_from_slice(&ct);
         Ok(Self {
@@ -119,8 +123,8 @@ impl EncryptedNodeRecord {
         })
     }
 
-    /// Decrypt a node record using our X25519 secret key.
-    pub fn decrypt(&self, our_secret: &zero_crypto::dh::X25519SecretKey) -> Result<NodeRecord, DhtError> {
+    /// Decrypt a node record using our X25519 secret key and verify freshness against current time.
+    pub fn decrypt(&self, our_secret: &zero_crypto::dh::X25519SecretKey, now_unix: u64) -> Result<NodeRecord, DhtError> {
         let their_pub = X25519PublicKey(self.ephemeral_pub);
         let shared = x25519_diffie_hellman(our_secret, &their_pub)
             .map_err(|e| DhtError::CryptoError(e.to_string()))?;
@@ -131,11 +135,28 @@ impl EncryptedNodeRecord {
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes.copy_from_slice(&ct[..12]);
         let nonce = AeadNonce(nonce_bytes);
-        let pt = decrypt(&aead_key, &nonce, &ct[12..], &self.node_id.0)
+        
+        // Spec 6.3: AAD MUST be bound to NodeId AND protocol version
+        let mut aad = Vec::new();
+        aad.extend_from_slice(b"ZERO-v1");
+        aad.extend_from_slice(&self.node_id.0);
+        
+        let pt = decrypt(&aead_key, &nonce, &ct[12..], &aad)
             .map_err(|_| DhtError::CryptoError("Decryption failed".into()))?;
         let record: NodeRecord = serde_cbor::from_slice(&pt)
             .map_err(|e| DhtError::SerializationError(e.to_string()))?;
         record.verify()?;
+        
+        // Spec 6.3: Decrypting clients MUST verify freshness window (+/- 10 minutes)
+        let diff = if record.timestamp > now_unix {
+            record.timestamp - now_unix
+        } else {
+            now_unix - record.timestamp
+        };
+        if diff > 600 {
+            return Err(DhtError::CryptoError("Freshness window exceeded".into()));
+        }
+        
         Ok(record)
     }
 }
@@ -171,7 +192,7 @@ mod tests {
             NodeId([1u8; 32]), &isk, vec![1, 2, 3, 4], 44300, vec![], 0,
         );
         let enc = EncryptedNodeRecord::encrypt(&record, &contact_kp.public_key()).unwrap();
-        let dec = enc.decrypt(&contact_kp.secret_key()).unwrap();
+        let dec = enc.decrypt(&contact_kp.secret_key(), 0).unwrap();
         assert_eq!(dec.ip, vec![1u8, 2, 3, 4]);
         assert_eq!(dec.port, 44300);
     }
@@ -183,6 +204,6 @@ mod tests {
         let wrong_kp = X25519Keypair::generate();
         let record = NodeRecord::create(NodeId([1u8; 32]), &isk, vec![127, 0, 0, 1], 44300, vec![], 0);
         let enc = EncryptedNodeRecord::encrypt(&record, &contact_kp.public_key()).unwrap();
-        assert!(enc.decrypt(&wrong_kp.secret_key()).is_err());
+        assert!(enc.decrypt(&wrong_kp.secret_key(), 0).is_err());
     }
 }
