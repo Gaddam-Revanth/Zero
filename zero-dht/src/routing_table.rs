@@ -84,9 +84,9 @@ impl RoutingTable {
         
         // Derive real AeadKeys via DH with each hop's ISK (acting as their stable onion key)
         let keys = [
-            derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h1.isk_pub))?,
-            derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h2.isk_pub))?,
-            derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h3.isk_pub))?,
+            self.derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h1.isk_pub))?,
+            self.derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h2.isk_pub))?,
+            self.derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h3.isk_pub))?,
         ];
 
         let hops = [h1.node_id, h2.node_id, h3.node_id];
@@ -106,16 +106,16 @@ impl RoutingTable {
         }
         255 // Same ID — shouldn't happen (self filtered above)
     }
-}
-
-fn derive_hop_key(our_ephemeral: &zero_crypto::dh::X25519Keypair, their_pub: &zero_crypto::dh::X25519PublicKey) -> Result<zero_crypto::aead::AeadKey, crate::DhtError> {
-    let shared = our_ephemeral.diffie_hellman(their_pub);
-    // Use HKDF to derive a dedicated onion routing key
-    let key_bytes = zero_crypto::kdf::hkdf_expand(&shared.0, zero_crypto::kdf::KdfContext::Custom("ZERO-Onion-v1"), 32)
-        .map_err(|e| crate::DhtError::CryptoError(e.to_string()))?;
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(&key_bytes);
-    Ok(zero_crypto::aead::AeadKey(arr))
+    
+    fn derive_hop_key(&self, our_ephemeral: &zero_crypto::dh::X25519Keypair, their_pub: &zero_crypto::dh::X25519PublicKey) -> Result<zero_crypto::aead::AeadKey, crate::DhtError> {
+        let shared = our_ephemeral.diffie_hellman(their_pub);
+        // Use HKDF to derive a dedicated onion routing key
+        let key_bytes = zero_crypto::kdf::hkdf(b"salt", &shared.0, zero_crypto::kdf::KdfContext::OnionHopKey, 32)
+            .map_err(|e| crate::DhtError::CryptoError(e.to_string()))?;
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&key_bytes);
+        Ok(zero_crypto::aead::AeadKey(arr))
+    }
 }
 
 #[cfg(test)]

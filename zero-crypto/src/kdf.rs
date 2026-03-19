@@ -3,7 +3,7 @@
 use crate::error::CryptoError;
 use argon2::{Argon2, Params as Argon2Params};
 use hkdf::Hkdf;
-use sha2::Sha512 as HkdfHash;
+use sha2::Sha256 as HkdfHash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KdfContext {
@@ -17,6 +17,7 @@ pub enum KdfContext {
     ZsfEnvelopeKey,
     ZgpSessionKey,
     DhtRecordKey,
+    OnionHopKey,
     Custom(&'static str),
 }
 
@@ -33,6 +34,7 @@ impl KdfContext {
             KdfContext::ZsfEnvelopeKey => b"ZERO-ZSF-v1-envelope-key",
             KdfContext::ZgpSessionKey  => b"ZERO-ZGP-v1-session-key",
             KdfContext::DhtRecordKey   => b"ZERO-ZDHT-v1-record-key",
+            KdfContext::OnionHopKey    => b"ZERO-Onion-v1-hop-key",
             KdfContext::Custom(s)      => s.as_bytes(),
         }
     }
@@ -40,6 +42,7 @@ impl KdfContext {
 
 pub fn hkdf_extract(salt: &[u8], ikm: &[u8]) -> Vec<u8> {
     let (prk, _) = Hkdf::<HkdfHash>::extract(Some(salt), ikm);
+    // PRK for Sha256 is exactly 32 bytes
     prk.to_vec()
 }
 

@@ -41,6 +41,11 @@ pub struct PacketHeader {
 }
 
 impl PacketHeader {
+    /// Create a new v1.0 header.
+    pub fn new(version: Version, packet_type: PacketType, flags: PacketFlags, body_len: u32) -> Self {
+        Self { version, packet_type, flags, body_len }
+    }
+
     /// Validate header and enforce limits for v1.0.
     pub fn validate_v1(&self) -> Result<(), WireError> {
         if self.version.major != 1 {

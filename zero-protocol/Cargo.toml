@@ -40,5 +40,11 @@ parking_lot        = { workspace = true }
 uniffi = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
-tokio    = { workspace = true, features = ["test-util"] }
-proptest = { workspace = true }
+tokio       = { workspace = true, features = ["test-util"] }
+proptest    = { workspace = true }
+zero-wire   = { path = "../zero-wire" }
+zero-dht     = { path = "../zero-dht" }
+zero-crypto = { path = "../zero-crypto" }
+serde_cbor  = { workspace = true }
+bytes       = { workspace = true }
+hex         = "0.4"

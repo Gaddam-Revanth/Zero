@@ -18,8 +18,8 @@ pub struct ZeroNode {
     pub self_id: ZeroId,
     #[allow(dead_code)]
     transport: Option<Arc<zero_transport::quic::QuicTransport>>,
-    #[allow(dead_code)]
-    dht_table: Option<Arc<Mutex<zero_dht::RoutingTable>>>,
+    /// Internal DHT routing table.
+    pub dht_table: Option<Arc<Mutex<zero_dht::RoutingTable>>>,
     #[allow(dead_code)]
     active_ratchets: Arc<dashmap::DashMap<String, Arc<Mutex<zero_ratchet::RatchetSession>>>>,
     /// Active group states, keyed by group_id hex.
@@ -79,11 +79,14 @@ impl ZeroNode {
         })
     }
 
+    /// Get the internal DHT routing table (if initialized).
+    pub fn dht_table(&self) -> Option<Arc<Mutex<zero_dht::RoutingTable>>> {
+        self.dht_table.clone()
+    }
+
     /// Connect to the DHT network and start mDNS discovery.
     pub fn connect(&self) -> Result<(), ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-
-        rt.block_on(async {
+        self.block_on(async {
             let addr = "0.0.0.0:0".parse().unwrap();
             let (_transport, _cert) = zero_transport::quic::QuicTransport::bind_server(addr)
                 .map_err(|e: zero_transport::error::TransportError| ZeroError::from(e))?;
@@ -93,16 +96,13 @@ impl ZeroNode {
                 disc.register_service(&node_id, 44300, vec!["127.0.0.1".parse().unwrap()])?;
             }
 
-            Ok::<_, ZeroError>(())
-        })?;
-        Ok(())
+            Ok(())
+        })
     }
 
     /// Search for a contact privately using 3-hop onion routing.
     pub fn private_lookup(&self, zero_id_str: String) -> Result<(), ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-
-        rt.block_on(async {
+        self.block_on(async {
             let target_id_raw = ZeroId::from_string(&zero_id_str).map_err(ZeroError::from)?;
             let target_node_id = zero_dht::node_id_from_isk(&target_id_raw.isk_pub());
 
@@ -116,16 +116,25 @@ impl ZeroNode {
                 return Err(ZeroError::Custom("DHT not initialized".to_string()));
             }
 
-            Ok::<_, ZeroError>(())
-        })?;
-        Ok(())
+            Ok(())
+        })
+    }
+
+    fn block_on<F: std::future::Future>(&self, f: F) -> F::Output {
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                tokio::task::block_in_place(move || handle.block_on(f))
+            }
+            Err(_) => {
+                let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+                rt.block_on(f)
+            }
+        }
     }
 
     /// Add a contact by their ZERO ID string and perform ZKX handshake.
     pub fn add_contact(&self, zero_id_str: String) -> Result<Arc<ZeroContact>, ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-
-        rt.block_on(async {
+        self.block_on(async {
             let _target_id = ZeroId::from_string(&zero_id_str).map_err(ZeroError::from)?;
 
             // ZKX: structured prologue (R2) + key confirmation (R4)
@@ -175,18 +184,16 @@ impl ZeroNode {
             self.active_ratchets
                 .insert(zero_id_str.clone(), Arc::new(Mutex::new(zr_session)));
 
-            Ok::<_, ZeroError>(())
-        })?;
-
-        Ok(Arc::new(ZeroContact {
-            id: zero_id_str.clone(),
-            ratchets: self.active_ratchets.clone(),
-            zav: self.zav.clone(),
-            zft: self.zft.clone(),
-            _transport: self.transport.clone(),
-            storage_dir: self.storage_dir.clone(),
-            passphrase: self.passphrase.clone(),
-        }))
+            Ok(Arc::new(ZeroContact {
+                id: zero_id_str.clone(),
+                ratchets: self.active_ratchets.clone(),
+                zav: self.zav.clone(),
+                zft: self.zft.clone(),
+                _transport: self.transport.clone(),
+                storage_dir: self.storage_dir.clone(),
+                passphrase: self.passphrase.clone(),
+            }))
+        })
     }
 
     // ─── Group Messaging ────────────────────────────────────────────────────────
@@ -208,8 +215,7 @@ impl ZeroNode {
 
     /// Invite a contact into an existing group.
     pub fn invite_to_group(&self, group_id_hex: String, contact_id: String) -> Result<(), ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-        rt.block_on(async {
+        self.block_on(async {
             let group_arc = self
                 .groups
                 .get(&group_id_hex)
@@ -223,16 +229,14 @@ impl ZeroNode {
             zero_groups::MemberManager::add_member(&mut state, member_id, timestamp, false)
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
             tracing::info!("Invited {} to group {}", contact_id, group_id_hex);
-            Ok::<_, ZeroError>(())
-        })?;
-        Ok(())
+            Ok(())
+        })
     }
 
     /// Encrypt and send a message to a group.
     /// This produces a ciphertext that can be fanned out to all members via their ZR sessions.
     pub fn send_group_message(&self, group_id_hex: String, msg: String) -> Result<Vec<u8>, ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-        rt.block_on(async {
+        self.block_on(async {
             let group_arc = self
                 .groups
                 .get(&group_id_hex)
@@ -255,7 +259,7 @@ impl ZeroNode {
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
             tracing::info!("Sent group message to {} ({} bytes)", group_id_hex, ciphertext.len());
-            Ok::<_, ZeroError>(ciphertext)
+            Ok(ciphertext)
         })
     }
 
@@ -298,7 +302,7 @@ impl ZeroNode {
     pub async fn dispatch_incoming_packet(&self, packet: zero_wire::Packet) -> Result<(), ZeroError> {
         // 1. Replay Cache (R3, §20.2.5) check
         // Bound replay tokens for packets requiring it.
-        if packet.body.len() >= 16 {
+        if (packet.header.flags.0 & zero_wire::types::PacketFlags::HAS_REPLAY_TOKEN != 0) && packet.body.len() >= 16 {
             let mut token_bytes = [0u8; 16];
             token_bytes.copy_from_slice(&packet.body[..16]);
             let token = zero_wire::ReplayToken(token_bytes);
@@ -346,7 +350,7 @@ impl ZeroNode {
                             if let Ok(onion) = serde_cbor::from_slice::<zero_dht::onion::OnionPacket>(&packet.body) {
                                 let bundle = self.bundle.lock().await;
                                 let shared = bundle.keypair.idk.diffie_hellman(&zero_crypto::dh::X25519PublicKey(onion.ephemeral_pub));
-                                let key_bytes = zero_crypto::kdf::hkdf_expand(&shared.0, zero_crypto::kdf::KdfContext::Custom("ZERO-Onion-v1"), 32).unwrap_or_default();
+                                let key_bytes = zero_crypto::kdf::hkdf(b"salt", &shared.0, zero_crypto::kdf::KdfContext::OnionHopKey, 32).unwrap_or_default();
                                 let mut arr = [0u8; 32];
                                 arr.copy_from_slice(&key_bytes);
                                 let key = zero_crypto::aead::AeadKey(arr);
@@ -405,8 +409,7 @@ impl ZeroContact {
     /// Encrypt and send a text message over the ZR ratchet.
     /// Returns the CBOR-encoded `RatchetMessage` ciphertext.
     pub fn send_message(&self, msg: String) -> Result<Vec<u8>, ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-        rt.block_on(async {
+        self.block_on(async {
             let ratchet_arc = self.ratchets.get(&self.id)
                 .ok_or_else(|| ZeroError::Custom("No active ratchet session".to_string()))?;
             let mut ratchet = ratchet_arc.lock().await;
@@ -419,7 +422,7 @@ impl ZeroContact {
             let ciphertext = serde_cbor::to_vec(&zr_msg)
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
             tracing::info!("→ Sent to {} ({} bytes)", self.id, ciphertext.len());
-            Ok::<_, ZeroError>(ciphertext)
+            Ok(ciphertext)
         })
     }
 
@@ -428,8 +431,7 @@ impl ZeroContact {
     /// `ciphertext_cbor` is the raw bytes received over the wire
     /// (a CBOR-encoded `RatchetMessage`). Returns the plaintext.
     pub fn receive_message(&self, ciphertext_cbor: Vec<u8>) -> Result<Vec<u8>, ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-        rt.block_on(async {
+        self.block_on(async {
             let zr_msg: zero_ratchet::RatchetMessage = serde_cbor::from_slice(&ciphertext_cbor)
                 .map_err(|e| ZeroError::Custom(format!("CBOR decode: {}", e)))?;
             let ratchet_arc = self.ratchets.get(&self.id)
@@ -443,20 +445,15 @@ impl ZeroContact {
             let _ = crate::persistence::save_session(&ratchet, &path, &self.passphrase);
             
             tracing::info!("← Received from {} ({} bytes)", self.id, plaintext.len());
-            Ok::<_, ZeroError>(plaintext)
+            Ok(plaintext)
         })
     }
 
     // ─── File Transfer ───────────────────────────────────────────────────────
 
     /// Prepare a file for sending.
-    ///
-    /// Returns the CBOR-encoded `FileOffer` as the first element and
-    /// all `FileChunk`s (also CBOR-encoded) as the second — ready to be
-    /// delivered one-by-one via `send_message` or the transport layer.
     pub fn send_file(&self, path: String) -> Result<Vec<u8>, ZeroError> {
-        let rt = tokio::runtime::Runtime::new().map_err(|e| ZeroError::Custom(e.to_string()))?;
-        rt.block_on(async {
+        self.block_on(async {
             let p = std::path::Path::new(&path);
             if let Some(zft) = &self.zft {
                 let (offer, chunks) = zft.prepare_send(p).await?;
@@ -480,6 +477,18 @@ impl ZeroContact {
                 serde_cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
             }
         })
+    }
+
+    fn block_on<F: std::future::Future>(&self, f: F) -> F::Output {
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                tokio::task::block_in_place(move || handle.block_on(f))
+            }
+            Err(_) => {
+                let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+                rt.block_on(f)
+            }
+        }
     }
 
     // ─── Audio / Video Calls ─────────────────────────────────────────────────
