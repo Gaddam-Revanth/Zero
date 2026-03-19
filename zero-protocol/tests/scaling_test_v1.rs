@@ -1,7 +1,5 @@
 use zero_protocol::api::ZeroNode;
 use zero_wire::{Packet, PacketHeader, PacketType, Version};
-use hex;
-use std::sync::Arc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn multi_node_scaling_simulation_v1() {
@@ -22,7 +20,7 @@ async fn multi_node_scaling_simulation_v1() {
 
     // 2. Multi-hop Onion Routing (4 hops)
     // Alice (N1) wants to reach N5 via N2, N3, N4
-    let target_node_id = zero_dht::node_id_from_isk(&n5_id.isk_pub());
+    let _target_node_id = zero_dht::node_id_from_isk(&n5_id.isk_pub());
     
     // We'll simulate the recursive peeling:
     // In a real network, N1 sends to N2, N2 peels and sends to N3, etc.

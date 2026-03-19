@@ -1,7 +1,6 @@
 use zero_protocol::api::ZeroNode;
 use zero_wire::{Packet, PacketHeader, PacketType, Version};
 use bytes::Bytes;
-use std::sync::Arc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn protocol_fuzzing_v1() {
