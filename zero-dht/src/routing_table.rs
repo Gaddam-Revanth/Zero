@@ -74,21 +74,24 @@ impl RoutingTable {
             return Err(crate::DhtError::NodeNotFound);
         }
 
-        // Logic: Pick 3 nodes from different buckets if possible, or just random
-        let h1 = &nodes[0].node_id;
-        let h2 = &nodes[1].node_id;
-        let h3 = &nodes[2].node_id;
+        // Pick 3 nodes for the onion layers (H1 -> H2 -> H3)
+        let h1 = &nodes[0];
+        let h2 = &nodes[1];
+        let h3 = &nodes[2];
 
-        let hops = [*h1, *h2, *h3];
-        // Mocking keys for now (in real system, derived via DH with hop's onion PK)
+        let ephemeral = zero_crypto::dh::X25519Keypair::generate();
+        let eph_pub = ephemeral.public_key();
+        
+        // Derive real AeadKeys via DH with each hop's ISK (acting as their stable onion key)
         let keys = [
-            zero_crypto::aead::AeadKey([0u8; 32]),
-            zero_crypto::aead::AeadKey([1u8; 32]),
-            zero_crypto::aead::AeadKey([2u8; 32]),
+            derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h1.isk_pub))?,
+            derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h2.isk_pub))?,
+            derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h3.isk_pub))?,
         ];
 
+        let hops = [h1.node_id, h2.node_id, h3.node_id];
         let payload = format!("FIND_NODE:{}", target.0.iter().map(|b| format!("{:02x}", b)).collect::<String>());
-        crate::onion::OnionPacket::wrap_3_hops(payload.as_bytes(), &hops, &keys)
+        crate::onion::OnionPacket::wrap_3_hops(payload.as_bytes(), &hops, &keys, eph_pub.0)
     }
 
     /// Determine which bucket a node belongs to (by XOR distance leading bit).
@@ -103,6 +106,16 @@ impl RoutingTable {
         }
         255 // Same ID — shouldn't happen (self filtered above)
     }
+}
+
+fn derive_hop_key(our_ephemeral: &zero_crypto::dh::X25519Keypair, their_pub: &zero_crypto::dh::X25519PublicKey) -> Result<zero_crypto::aead::AeadKey, crate::DhtError> {
+    let shared = our_ephemeral.diffie_hellman(their_pub);
+    // Use HKDF to derive a dedicated onion routing key
+    let key_bytes = zero_crypto::kdf::hkdf_expand(&shared.0, zero_crypto::kdf::KdfContext::Custom("ZERO-Onion-v1"), 32)
+        .map_err(|e| crate::DhtError::CryptoError(e.to_string()))?;
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(&key_bytes);
+    Ok(zero_crypto::aead::AeadKey(arr))
 }
 
 #[cfg(test)]

@@ -29,6 +29,7 @@ impl OnionPacket {
         payload: &[u8],
         hops: &[NodeId; 3],
         hop_keys: &[AeadKey; 3],
+        ephemeral_pub: [u8; 32],
     ) -> Result<Self, DhtError> {
         // 1. Innermost layer (H3): contains payload + final destination info
         let layer3 = OnionLayer {
@@ -36,30 +37,39 @@ impl OnionPacket {
             inner_payload: payload.to_vec(),
         };
         let l3_encoded = serde_cbor::to_vec(&layer3).map_err(|_| DhtError::SerializationError("OnionLayer 3".into()))?;
-        let ct3 = encrypt(&hop_keys[2], &AeadNonce::random(), &l3_encoded, &[])
+        let nonce3 = AeadNonce::random();
+        let mut ct3_blob = nonce3.0.to_vec();
+        let ct3 = encrypt(&hop_keys[2], &nonce3, &l3_encoded, &[])
             .map_err(|_| DhtError::CryptoError("H3 encrypt failed".into()))?;
+        ct3_blob.extend_from_slice(&ct3);
 
         // 2. Middle layer (H2): forwards to H3
         let layer2 = OnionLayer {
             next_hop: hops[2],
-            inner_payload: ct3,
+            inner_payload: ct3_blob,
         };
         let l2_encoded = serde_cbor::to_vec(&layer2).map_err(|_| DhtError::SerializationError("OnionLayer 2".into()))?;
-        let ct2 = encrypt(&hop_keys[1], &AeadNonce::random(), &l2_encoded, &[])
+        let nonce2 = AeadNonce::random();
+        let mut ct2_blob = nonce2.0.to_vec();
+        let ct2 = encrypt(&hop_keys[1], &nonce2, &l2_encoded, &[])
             .map_err(|_| DhtError::CryptoError("H2 encrypt failed".into()))?;
+        ct2_blob.extend_from_slice(&ct2);
 
         // 3. Outermost layer (H1): forwards to H2
         let layer1 = OnionLayer {
             next_hop: hops[1],
-            inner_payload: ct2,
+            inner_payload: ct2_blob,
         };
         let l1_encoded = serde_cbor::to_vec(&layer1).map_err(|_| DhtError::SerializationError("OnionLayer 1".into()))?;
-        let ct1 = encrypt(&hop_keys[0], &AeadNonce::random(), &l1_encoded, &[])
+        let nonce1 = AeadNonce::random();
+        let mut ct1_blob = nonce1.0.to_vec();
+        let ct1 = encrypt(&hop_keys[0], &nonce1, &l1_encoded, &[])
             .map_err(|_| DhtError::CryptoError("H1 encrypt failed".into()))?;
+        ct1_blob.extend_from_slice(&ct1);
 
         Ok(Self {
-            ephemeral_pub: [0u8; 32], // In real: Ephemeral key for DH
-            encrypted_data: ct1,
+            ephemeral_pub,
+            encrypted_data: ct1_blob,
         })
     }
 
@@ -68,7 +78,14 @@ impl OnionPacket {
         &self,
         my_key: &AeadKey,
     ) -> Result<OnionLayer, DhtError> {
-        let pt = decrypt(my_key, &AeadNonce([0u8; 12]), &self.encrypted_data, &[]) // In real: extract nonce from packet
+        let ct = &self.encrypted_data;
+        if ct.len() < 12 { return Err(DhtError::CryptoError("Onion ciphertext too short".into())); }
+        
+        let mut nonce_bytes = [0u8; 12];
+        nonce_bytes.copy_from_slice(&ct[..12]);
+        let nonce = AeadNonce(nonce_bytes);
+
+        let pt = decrypt(my_key, &nonce, &ct[12..], &[]) 
             .map_err(|_| DhtError::AuthenticationFailed)?;
         
         let layer: OnionLayer = serde_cbor::from_slice(&pt)

@@ -59,11 +59,14 @@ impl ZeroNode {
 
         let replay_cache = Arc::new(zero_wire::ReplayCache::new(50_000));
 
+        let node_id = zero_dht::node_id_from_isk(&self_id.isk_pub());
+        let dht_table = Some(Arc::new(Mutex::new(zero_dht::RoutingTable::new(node_id))));
+        
         Ok(Self {
             bundle: Arc::new(Mutex::new(bundle)),
             self_id,
             transport: None,
-            dht_table: None,
+            dht_table,
             active_ratchets: Arc::new(dashmap::DashMap::new()),
             groups: Arc::new(dashmap::DashMap::new()),
             discovery,
@@ -322,7 +325,41 @@ impl ZeroNode {
             zero_wire::PacketType::ZdhtPing |
             zero_wire::PacketType::ZdhtFindRecordReq |
             zero_wire::PacketType::ZdhtFindRecordResp => {
-                tracing::info!("Received ZDHT routing packet");
+                tracing::info!("Received ZDHT routing packet: {:?}", packet.header.packet_type);
+                if let Some(dht_arc) = &self.dht_table {
+                    let mut dht = dht_arc.lock().await;
+                    match packet.header.packet_type {
+                        zero_wire::PacketType::ZdhtPing => {
+                            // Add node to routing table
+                            let node_info = zero_dht::kbucket::NodeInfo {
+                                node_id: zero_dht::NodeId(packet.sender_node_id),
+                                isk_pub: [0u8; 32], // production: signed info
+                                ip: vec![], // production: extract from transport
+                                port: 0,
+                                last_seen: 0,
+                                is_bootstrap: false,
+                            };
+                            dht.add_node(node_info);
+                        }
+                        zero_wire::PacketType::ZdhtFindRecordReq => {
+                            // Logic: Peel onion layer if it's an OnionPacket, or answer if it's plaintext
+                            if let Ok(onion) = serde_cbor::from_slice::<zero_dht::onion::OnionPacket>(&packet.body) {
+                                let bundle = self.bundle.lock().await;
+                                let shared = bundle.keypair.idk.diffie_hellman(&zero_crypto::dh::X25519PublicKey(onion.ephemeral_pub));
+                                let key_bytes = zero_crypto::kdf::hkdf_expand(&shared.0, zero_crypto::kdf::KdfContext::Custom("ZERO-Onion-v1"), 32).unwrap_or_default();
+                                let mut arr = [0u8; 32];
+                                arr.copy_from_slice(&key_bytes);
+                                let key = zero_crypto::aead::AeadKey(arr);
+
+                                if let Ok(layer) = onion.peel(&key) {
+                                    tracing::info!("Peeled onion layer! Forwarding to: {:?}", layer.next_hop);
+                                    // Logic: Forward layer.inner_payload to layer.next_hop
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
             zero_wire::PacketType::ZsfStoreEnvelope |
             zero_wire::PacketType::ZsfFetchReq |

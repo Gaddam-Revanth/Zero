@@ -134,9 +134,19 @@ impl GroupState {
     }
     
     /// Rotate our sender key (e.g. when someone is removed)
+    /// This uses a BLAKE2b-based ratchet step to derive the next chain root.
     pub fn rotate_sender_key(&mut self, our_id: &ZeroId) -> Result<[u8; 32], GroupError> {
-        let mut new_chain = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut new_chain);
+        let current_chain = self.sender_chain.unwrap_or_else(|| {
+            let mut r = [0u8; 32];
+            rand::thread_rng().fill_bytes(&mut r);
+            r
+        });
+        
+        // Ratchet: next_chain = BLAKE2b-256(current_chain || "ZGP-ratchet-v1")
+        let mut input = current_chain.to_vec();
+        input.extend_from_slice(b"ZGP-ratchet-v1");
+        let new_chain = blake2b_256(&input);
+        
         self.sender_chain = Some(new_chain);
         
         if let Some(member) = self.members.get_mut(our_id) {
