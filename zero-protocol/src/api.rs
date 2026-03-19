@@ -300,6 +300,15 @@ impl ZeroNode {
     /// Global packet dispatch loop for incoming generic packets.
     /// This handles the "Packet Type Registry (§20.3) — typed dispatch for 15 packet types"
     pub async fn dispatch_incoming_packet(&self, packet: zero_wire::Packet) -> Result<(), ZeroError> {
+        // §6.2: Universal Validation
+        if packet.body.len() != packet.header.body_len as usize {
+            return Err(ZeroError::Custom(format!(
+                "Body length mismatch: header={}, actual={}",
+                packet.header.body_len,
+                packet.body.len()
+            )));
+        }
+
         // 1. Replay Cache (R3, §20.2.5) check
         // Bound replay tokens for packets requiring it.
         if (packet.header.flags.0 & zero_wire::types::PacketFlags::HAS_REPLAY_TOKEN != 0) && packet.body.len() >= 16 {
