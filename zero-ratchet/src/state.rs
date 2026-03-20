@@ -78,6 +78,7 @@ pub struct RatchetMessage {
     /// Encrypted header containing the ratchet PK and counter.
     pub header: EncryptedHeader,
     /// The encrypted message ciphertext.
+    #[serde(with = "serde_bytes")]
     pub ciphertext: Vec<u8>,
 }
 

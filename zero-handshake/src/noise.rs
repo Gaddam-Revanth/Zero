@@ -186,11 +186,15 @@ pub struct NoiseHandshakeState {
 }
 
 impl NoiseHandshakeState {
-    /// Create a new Noise XX handshake state with a structured prologue.
-    pub fn new(role: NoiseRole, local_static: X25519Keypair, prologue: &HandshakePrologue) -> Self {
+    /// Create a new Noise XX handshake state with a structured prologue and a provided ephemeral key.
+    pub fn new(
+        role: NoiseRole,
+        local_static: X25519Keypair,
+        local_ephemeral: X25519Keypair,
+        prologue: &HandshakePrologue,
+    ) -> Self {
         let mut sym = SymmetricState::new(NOISE_PROTOCOL_NAME);
         sym.mix_hash(&prologue.encode());
-        let local_ephemeral = X25519Keypair::generate();
         Self {
             role,
             sym,
@@ -370,10 +374,10 @@ mod tests {
         let prologue = HandshakePrologue::v1_0(0);
 
         let mut alice = NoiseHandshakeState::new(
-            NoiseRole::Initiator, alice_static, &prologue,
+            NoiseRole::Initiator, alice_static, X25519Keypair::generate(), &prologue,
         );
         let mut bob = NoiseHandshakeState::new(
-            NoiseRole::Responder, bob_static, &prologue,
+            NoiseRole::Responder, bob_static, X25519Keypair::generate(), &prologue,
         );
 
         // Handshake

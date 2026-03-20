@@ -143,8 +143,9 @@ impl ZeroNode {
             let bob_id = ZeroId::from_keypair(&bob_owned.keypair, [0u8; 4]);
             let bob_bundle = bob_owned.public_bundle(&bob_id);
 
-            let _prologue = zero_handshake::noise::HandshakePrologue::v1_0(0);
-            let initiator = zero_handshake::x3dh::X3dhInitiator::new();
+            // Handshake (ZKX)
+            let ek = zero_handshake::ephemeral_pool::get_ephemeral().await;
+            let initiator = zero_handshake::x3dh::X3dhInitiator::new(ek);
             let h_noise = [0u8; 32];
             let (_init_msg, zkx_output) = initiator
                 .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(h_noise))
@@ -152,10 +153,11 @@ impl ZeroNode {
 
             // Load persisted session or init new one
             let path = crate::persistence::session_path(&self.storage_dir, &zero_id_str);
+            let dh = zero_handshake::ephemeral_pool::get_ephemeral().await;
+            
             let zr_session = if path.exists() {
                 crate::persistence::load_session(&path, &self.passphrase).unwrap_or_else(|_| {
                     tracing::warn!("Failed to load session, creating new one");
-                    let dh = zero_crypto::dh::X25519Keypair::generate();
                     zero_ratchet::RatchetSession::new(zero_ratchet::SessionInit {
                         master_secret: zkx_output.0.to_vec(),
                         is_initiator: true,
@@ -164,7 +166,6 @@ impl ZeroNode {
                     }).unwrap()
                 })
             } else {
-                let dh = zero_crypto::dh::X25519Keypair::generate();
                 let remote_dh_pub = zero_crypto::dh::X25519PublicKey([0u8; 32]);
                 let session = zero_ratchet::RatchetSession::new(zero_ratchet::SessionInit {
                     master_secret: zkx_output.0.to_vec(),

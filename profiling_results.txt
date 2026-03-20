@@ -1,0 +1,17 @@
+﻿
+running 1 test
+
+=== Handshake Efficiency Benchmark ===
+Standard TLS 1.3 Handshake: 10.7759ms
+  --- Handshake Profiling ---
+  Initiator (3 DH + KEM Encaps): 28.7705ms
+  Responder (3 DH + KEM Decaps): 21.9738ms
+  ML-KEM-768 Encapsulate: 9.295ms
+  ML-KEM-768 Decapsulate: 18.5099ms
+  Raw X25519 DH: 741.9┬╡s
+ZERO ZKX (PQ-Hybrid) Handshake: 50.7443ms
+ZKX Time Overhead vs TLS: 370.94%
+test benchmark_handshake_efficiency ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.22s
+

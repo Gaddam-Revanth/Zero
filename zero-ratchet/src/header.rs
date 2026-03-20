@@ -45,7 +45,7 @@ impl DecryptedHeader {
 
 /// An encrypted header blob — opaque to relay servers.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct EncryptedHeader(pub Vec<u8>);
+pub struct EncryptedHeader(#[serde(with = "serde_bytes")] pub Vec<u8>);
 
 /// Encrypt a header with the header key HKs.
 pub fn encrypt_header(hk: &AeadKey, header: &DecryptedHeader) -> Result<EncryptedHeader, RatchetError> {

@@ -48,3 +48,6 @@ zero-crypto = { path = "../zero-crypto" }
 serde_cbor  = { workspace = true }
 bytes       = { workspace = true }
 hex         = "0.4"
+rustls      = { workspace = true }
+tokio-rustls = { workspace = true }
+rcgen       = { workspace = true }

@@ -13,7 +13,7 @@ pub const AEAD_NONCE_SIZE: usize = 12;
 pub const TAG_SIZE: usize = 16;
 
 #[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
-pub struct AeadKey(pub [u8; AEAD_KEY_SIZE]);
+pub struct AeadKey(#[serde(with = "serde_bytes")] pub [u8; AEAD_KEY_SIZE]);
 
 impl std::fmt::Debug for AeadKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -22,7 +22,7 @@ impl std::fmt::Debug for AeadKey {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AeadNonce(pub [u8; AEAD_NONCE_SIZE]);
+pub struct AeadNonce(#[serde(with = "serde_bytes")] pub [u8; AEAD_NONCE_SIZE]);
 
 impl AeadNonce {
     pub fn random() -> Self {

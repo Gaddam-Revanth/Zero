@@ -11,10 +11,10 @@ use curve25519_dalek::constants::X25519_BASEPOINT;
 pub const X25519_KEY_SIZE: usize = 32;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct X25519PublicKey(pub [u8; X25519_KEY_SIZE]);
+pub struct X25519PublicKey(#[serde(with = "serde_bytes")] pub [u8; X25519_KEY_SIZE]);
 
 #[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
-pub struct X25519SecretKey(pub [u8; X25519_KEY_SIZE]);
+pub struct X25519SecretKey(#[serde(with = "serde_bytes")] pub [u8; X25519_KEY_SIZE]);
 
 impl std::fmt::Debug for X25519SecretKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -24,7 +24,9 @@ impl std::fmt::Debug for X25519SecretKey {
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct X25519Keypair {
+    #[serde(with = "serde_bytes")]
     pub secret: [u8; 32],
+    #[serde(with = "serde_bytes")]
     pub public: [u8; 32],
 }
 
@@ -77,7 +79,7 @@ impl X25519Keypair {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct X25519SharedSecret(pub [u8; X25519_KEY_SIZE]);
+pub struct X25519SharedSecret(#[serde(with = "serde_bytes")] pub [u8; X25519_KEY_SIZE]);
 
 impl std::fmt::Debug for X25519SharedSecret {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -16,26 +16,28 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
 
     // --- Phase 1: Noise XX (transcript binding) ---
     let prologue = HandshakePrologue::v1_0(0);
-    let alice_static = X25519Keypair::generate();
-    let bob_static = X25519Keypair::generate();
 
-    let mut alice_noise = NoiseHandshakeState::new(NoiseRole::Initiator, alice_static, &prologue);
-    let mut bob_noise = NoiseHandshakeState::new(NoiseRole::Responder, bob_static, &prologue);
+    let mut alice = NoiseHandshakeState::new(
+        NoiseRole::Initiator, alice_kp.idk.clone(), X25519Keypair::generate(), &prologue,
+    );
+    let mut bob = NoiseHandshakeState::new(
+        NoiseRole::Responder, bob_owned.keypair.idk.clone(), X25519Keypair::generate(), &prologue,
+    );
 
-    let msg1 = alice_noise.write_message1().expect("msg1");
-    let msg2 = bob_noise.read_message1_write_message2(&msg1).expect("msg2");
-    let msg3 = alice_noise
+    let msg1 = alice.write_message1().expect("msg1");
+    let msg2 = bob.read_message1_write_message2(&msg1).expect("msg2");
+    let msg3 = alice
         .read_message2_write_message3(&msg2, b"zkx")
         .expect("msg3");
-    let _payload = bob_noise.read_message3(&msg3).expect("payload");
+    let _payload = bob.read_message3(&msg3).expect("payload");
 
-    let alice_out = alice_noise.finalize().expect("alice finalize");
-    let bob_out = bob_noise.finalize().expect("bob finalize");
+    let alice_out = alice.finalize().expect("alice finalize");
+    let bob_out = bob.finalize().expect("bob finalize");
     assert_eq!(alice_out.handshake_hash, bob_out.handshake_hash);
     let noise_hash = alice_out.handshake_hash;
 
     // --- Phase 2/3: X3DH + ML-KEM (bound to Noise hash) ---
-    let initiator = X3dhInitiator::new();
+    let initiator = X3dhInitiator::new(X25519Keypair::generate());
     let (init_msg, alice_ms) = initiator
         .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(noise_hash))
         .expect("alice initiate");
@@ -99,4 +101,3 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     let pt = bob_zr.decrypt(&zr_msg2, associated_data, 0).expect("zr decrypt");
     assert_eq!(pt, b"hello via zsf");
 }
-

@@ -1,0 +1,14 @@
+﻿
+running 1 test
+
+=== Messaging Overhead Benchmark ===
+Size: 1024 bytes
+test benchmark_messaging_overhead ... FAILED
+
+failures:
+
+failures:
+    benchmark_messaging_overhead
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+

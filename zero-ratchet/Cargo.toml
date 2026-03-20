@@ -11,6 +11,7 @@ repository.workspace = true
 zero-crypto   = { path = "../zero-crypto" }
 zero-identity = { path = "../zero-identity" }
 serde         = { workspace = true }
+serde_bytes   = { workspace = true }
 serde_cbor    = { workspace = true }
 zeroize       = { workspace = true }
 rand          = { workspace = true }

@@ -20,11 +20,11 @@ pub const ML_KEM_768_SS_SIZE: usize = 32;
 
 /// An ML-KEM-768 encapsulation (public) key.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MlKem768EncapsKey(pub Vec<u8>);
+pub struct MlKem768EncapsKey(#[serde(with = "serde_bytes")] pub Vec<u8>);
 
 /// An ML-KEM-768 decapsulation (private) key stored as a 64-byte seed. Zeroized on drop.
 #[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
-pub struct MlKem768DecapsKey(pub Vec<u8>);
+pub struct MlKem768DecapsKey(#[serde(with = "serde_bytes")] pub Vec<u8>);
 
 impl std::fmt::Debug for MlKem768DecapsKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -34,11 +34,11 @@ impl std::fmt::Debug for MlKem768DecapsKey {
 
 /// An ML-KEM-768 ciphertext produced by encapsulation.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MlKem768Ciphertext(pub Vec<u8>);
+pub struct MlKem768Ciphertext(#[serde(with = "serde_bytes")] pub Vec<u8>);
 
 /// A 32-byte ML-KEM-768 shared secret. Zeroized on drop.
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
-pub struct MlKem768SharedSecret(pub [u8; ML_KEM_768_SS_SIZE]);
+#[derive(Clone, Zeroize, ZeroizeOnDrop, Serialize, Deserialize)]
+pub struct MlKem768SharedSecret(#[serde(with = "serde_bytes")] pub [u8; ML_KEM_768_SS_SIZE]);
 
 impl std::fmt::Debug for MlKem768SharedSecret {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

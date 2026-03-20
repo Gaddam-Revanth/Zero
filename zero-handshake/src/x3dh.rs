@@ -45,9 +45,9 @@ pub struct X3dhInitiator {
 }
 
 impl X3dhInitiator {
-    /// Create a new X3DH initiator with a fresh ephemeral key.
-    pub fn new() -> Self {
-        Self { ek: X25519Keypair::generate() }
+    /// Create a new X3DH initiator with the provided ephemeral key.
+    pub fn new(ek: X25519Keypair) -> Self {
+        Self { ek }
     }
 
     /// Start the X3DH key agreement with Bob.
@@ -73,27 +73,47 @@ impl X3dhInitiator {
 
         let bob_spk_pub = X25519PublicKey(bob_bundle.spk.public_key.0);
         let bob_idk_pub = X25519PublicKey(bob_bundle.idk_pub.0);
+        let alice_idk_sk = alice_keypair.idk.secret_key();
+        let initiator_ek_sk = self.ek.secret_key();
+        let pq_ek_bytes = bob_bundle.pq_isk_pub.clone();
+        let bob_opk = bob_bundle.opk.clone();
 
-        let dh1 = x25519_diffie_hellman(&alice_keypair.idk.secret_key(), &bob_spk_pub)
-            .map_err(|_| HandshakeError::DhFailed)?;
+        // Parallelize DH and KEM operations
+        let (dh_results, kem_result) = rayon::join(
+            || {
+                let dh1 = x25519_diffie_hellman(&alice_idk_sk, &bob_spk_pub);
+                let dh2 = x25519_diffie_hellman(&initiator_ek_sk, &bob_idk_pub);
+                let dh3 = x25519_diffie_hellman(&initiator_ek_sk, &bob_spk_pub);
+                
+                let dh4 = if let Some(opk) = &bob_opk {
+                    let opk_pub = X25519PublicKey(opk.public_key.0);
+                    Some(x25519_diffie_hellman(&initiator_ek_sk, &opk_pub))
+                } else {
+                    None
+                };
 
-        let dh2 = x25519_diffie_hellman(&self.ek.secret_key(), &bob_idk_pub)
-            .map_err(|_| HandshakeError::DhFailed)?;
+                (dh1, dh2, dh3, dh4)
+            },
+            || {
+                let pq_ek = MlKem768EncapsKey(pq_ek_bytes);
+                ml_kem_768_encapsulate(&pq_ek)
+            }
+        );
 
-        let dh3 = x25519_diffie_hellman(&self.ek.secret_key(), &bob_spk_pub)
-            .map_err(|_| HandshakeError::DhFailed)?;
-
-        let (dh4_bytes, opk_index) = if let Some(opk) = &bob_bundle.opk {
-            let opk_pub = X25519PublicKey(opk.public_key.0);
-            let dh = x25519_diffie_hellman(&self.ek.secret_key(), &opk_pub)
-                .map_err(|_| HandshakeError::DhFailed)?;
-            (dh.0.to_vec(), Some(opk.index))
-        } else {
-            (vec![], None)
+        let (dh1, dh2, dh3, dh4_opt) = dh_results;
+        let dh1 = dh1.map_err(|_| HandshakeError::DhFailed)?;
+        let dh2 = dh2.map_err(|_| HandshakeError::DhFailed)?;
+        let dh3 = dh3.map_err(|_| HandshakeError::DhFailed)?;
+        
+        let (dh4_bytes, opk_index) = match (dh4_opt, &bob_opk) {
+            (Some(res), Some(opk)) => {
+                let dh = res.map_err(|_| HandshakeError::DhFailed)?;
+                (dh.0.to_vec(), Some(opk.index))
+            },
+            _ => (vec![], None),
         };
 
-        let pq_ek = MlKem768EncapsKey(bob_bundle.pq_isk_pub.clone());
-        let (kem_ct, kem_ss) = ml_kem_768_encapsulate(&pq_ek)
+        let (kem_ct, kem_ss) = kem_result
             .map_err(|e| HandshakeError::KemError(e.to_string()))?;
 
         let mut ikm = Vec::with_capacity(32 + 32 * 5 + kem_ss.0.len());
@@ -162,14 +182,27 @@ impl X3dhResponder {
             None => return Err(HandshakeError::BundleVerificationFailed("SPK secret missing".into())),
         };
 
-        let dh1 = x25519_diffie_hellman(&spk_sk, &alice_idk_pub)
-            .map_err(|_| HandshakeError::DhFailed)?;
+        let idk_sk = bob_keypair.idk.secret_key();
+        let pq_dk = &bob_keypair.pq_isk.dk;
+        let kem_ct = MlKem768Ciphertext(init_msg.kem_ciphertext.clone());
 
-        let dh2 = x25519_diffie_hellman(&bob_keypair.idk.secret_key(), &alice_ek_pub)
-            .map_err(|_| HandshakeError::DhFailed)?;
+        // Parallelize DH and KEM operations
+        let (dh_results, kem_result) = rayon::join(
+            || {
+                let dh1 = x25519_diffie_hellman(&spk_sk, &alice_idk_pub);
+                let dh2 = x25519_diffie_hellman(&idk_sk, &alice_ek_pub);
+                let dh3 = x25519_diffie_hellman(&spk_sk, &alice_ek_pub);
+                (dh1, dh2, dh3)
+            },
+            || {
+                ml_kem_768_decapsulate(pq_dk, &kem_ct)
+            }
+        );
 
-        let dh3 = x25519_diffie_hellman(&spk_sk, &alice_ek_pub)
-            .map_err(|_| HandshakeError::DhFailed)?;
+        let (dh1, dh2, dh3) = dh_results;
+        let dh1 = dh1.map_err(|_| HandshakeError::DhFailed)?;
+        let dh2 = dh2.map_err(|_| HandshakeError::DhFailed)?;
+        let dh3 = dh3.map_err(|_| HandshakeError::DhFailed)?;
 
         let dh4_bytes: Vec<u8> = if let Some(opk_index) = init_msg.bob_opk_index {
             let opk = bob_bundle_owned.opks.iter_mut()
@@ -184,8 +217,7 @@ impl X3dhResponder {
             vec![]
         };
 
-        let kem_ct = MlKem768Ciphertext(init_msg.kem_ciphertext.clone());
-        let kem_ss = ml_kem_768_decapsulate(&bob_keypair.pq_isk.dk, &kem_ct)
+        let kem_ss = kem_result
             .map_err(|e| HandshakeError::KemError(e.to_string()))?;
 
         let mut ikm = Vec::with_capacity(32 + 32 * 5);
@@ -230,7 +262,7 @@ mod tests {
         let bob_id = ZeroId::from_keypair(&bob_owned.keypair, [0u8; 4]);
         let bob_bundle = bob_owned.public_bundle(&bob_id);
 
-        let initiator = X3dhInitiator::new();
+        let initiator = X3dhInitiator::new(X25519Keypair::generate());
         let (init_msg, alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
 
         let mut bob_owned_correct = bob_owned;

@@ -19,6 +19,8 @@ pub mod error;
 pub mod master_secret;
 pub mod noise;
 pub mod x3dh;
+/// Background ephemeral key pool management.
+pub mod ephemeral_pool;
 
 pub use error::HandshakeError;
 pub use master_secret::{MasterSecret, ZkxOutput, MASTER_SECRET_SIZE};

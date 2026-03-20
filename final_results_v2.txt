@@ -1,0 +1,28 @@
+﻿
+running 3 tests
+
+=== Messaging Overhead Benchmark ===
+Size: 1024 bytes
+
+=== Ping-Pong Latency Benchmark ===
+
+=== Handshake Efficiency Benchmark ===
+  ZERO ZR Overhead: 1154 bytes (112.70%)
+  TLS 1.3 (est) Overhead: 21 bytes (2.05%)
+Size: 10240 bytes
+  ZERO ZR Overhead: 9497 bytes (92.74%)
+  TLS 1.3 (est) Overhead: 21 bytes (0.21%)
+Size: 1048576 bytes
+Standard TLS 1.3 Handshake: 11.951ms
+Standard TLS 1.3 Latency (RTT): 1.0661ms
+ZERO ZR (Ratchet) Latency (RTT): 394.6┬╡s
+test benchmark_ping_pong_latency ... ok
+ZERO ZKX (PQ-Hybrid) Handshake: 51.4585ms
+ZKX Time Overhead vs TLS: 330.57%
+test benchmark_handshake_efficiency ... ok
+  ZERO ZR Overhead: 949867 bytes (90.59%)
+  TLS 1.3 (est) Overhead: 21 bytes (0.00%)
+test benchmark_messaging_overhead ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
