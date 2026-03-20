@@ -152,7 +152,7 @@ impl SymmetricState {
 
 fn nonce_from_counter(n: u64) -> AeadNonce {
     let mut arr = [0u8; 12];
-    arr[4..12].copy_from_slice(&n.to_be_bytes());
+    arr[0..8].copy_from_slice(&n.to_le_bytes());
     AeadNonce(arr)
 }
 

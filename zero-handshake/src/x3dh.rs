@@ -175,6 +175,18 @@ impl X3dhResponder {
     ) -> Result<(MasterSecret, [u8; 32]), HandshakeError> {
         let bob_keypair = &bob_bundle_owned.keypair;
         let alice_ek_pub  = init_msg.alice_ek_pub.clone();
+
+        if init_msg.bob_opk_index.is_none() {
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+            if bob_bundle_owned.recent_handshakes.len() > 1000 {
+                bob_bundle_owned.recent_handshakes.retain(|_, &mut ts| now.saturating_sub(ts) < 3600);
+            }
+            if bob_bundle_owned.recent_handshakes.contains_key(&alice_ek_pub.0) {
+                return Err(HandshakeError::AuthenticationFailed);
+            }
+            bob_bundle_owned.recent_handshakes.insert(alice_ek_pub.0, now);
+        }
+
         let alice_idk_pub = init_msg.alice_idk_pub.clone();
 
         let spk_sk = if bob_bundle_owned.current_spk.index == init_msg.bob_spk_index {

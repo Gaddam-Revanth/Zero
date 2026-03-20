@@ -32,6 +32,15 @@ pub struct KeyBundle {
 impl KeyBundle {
     /// Verify the bundle's internal consistency (SPK signature).
     pub fn verify(&self) -> Result<(), IdentityError> {
+        let id_comp = self.zero_id.components();
+        if self.isk_pub.0 != id_comp.isk_pub || self.idk_pub.0 != id_comp.idk_pub {
+            return Err(IdentityError::CryptoError("Bundle keys do not match ZeroId".into()));
+        }
+        let pq_hash = zero_crypto::hash::blake2b_256(&self.pq_isk_pub);
+        if pq_hash[..4] != id_comp.pq_hash {
+            return Err(IdentityError::CryptoError("PQ ISK hash does not match ZeroId".into()));
+        }
+
         zero_crypto::sign::ed25519_verify(
             &self.isk_pub,
             &self.spk.public_key.0,
@@ -65,6 +74,8 @@ pub struct OwnedKeyBundle {
     pub spk_created_at: u64,
     /// History of old signed prekeys to support out-of-order handshakes.
     pub old_spks: std::collections::HashMap<u32, SignedPrekey>,
+    /// Cache of recent handshakes to prevent replay DoS when OPKs are omitted.
+    pub recent_handshakes: std::collections::HashMap<[u8; 32], u64>,
 }
 
 impl OwnedKeyBundle {
@@ -80,6 +91,7 @@ impl OwnedKeyBundle {
             spk_index: 0,
             spk_created_at: created_at,
             old_spks: std::collections::HashMap::new(),
+            recent_handshakes: std::collections::HashMap::new(),
         })
     }
 
