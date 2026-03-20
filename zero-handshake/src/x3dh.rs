@@ -177,9 +177,12 @@ impl X3dhResponder {
         let alice_ek_pub  = init_msg.alice_ek_pub.clone();
         let alice_idk_pub = init_msg.alice_idk_pub.clone();
 
-        let spk_sk = match &bob_bundle_owned.current_spk.secret_key {
-            Some(s) => X25519SecretKey(s.0),
-            None => return Err(HandshakeError::BundleVerificationFailed("SPK secret missing".into())),
+        let spk_sk = if bob_bundle_owned.current_spk.index == init_msg.bob_spk_index {
+            X25519SecretKey(bob_bundle_owned.current_spk.secret_key.as_ref().unwrap().0)
+        } else {
+            let old_spk = bob_bundle_owned.old_spks.get(&init_msg.bob_spk_index)
+                .ok_or_else(|| HandshakeError::BundleVerificationFailed(format!("SPK index {} not found in history", init_msg.bob_spk_index)))?;
+            X25519SecretKey(old_spk.secret_key.as_ref().unwrap().0)
         };
 
         let idk_sk = bob_keypair.idk.secret_key();

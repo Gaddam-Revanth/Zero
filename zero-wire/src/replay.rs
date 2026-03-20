@@ -37,12 +37,17 @@ fn key(receiver: &[u8; 32], ty: PacketType, tok: &ReplayToken) -> [u8; 16] {
 pub struct ReplayCache {
     ttl_ms: u64,
     entries: DashMap<[u8; 16], u64>,
+    last_purge_ms: std::sync::atomic::AtomicU64,
 }
 
 impl ReplayCache {
     /// Create a replay cache with TTL in milliseconds.
     pub fn new(ttl_ms: u64) -> Self {
-        Self { ttl_ms, entries: DashMap::new() }
+        Self { 
+            ttl_ms, 
+            entries: DashMap::new(),
+            last_purge_ms: std::sync::atomic::AtomicU64::new(0),
+        }
     }
 
     /// Returns true if token is fresh (inserted), false if replayed.
@@ -53,7 +58,11 @@ impl ReplayCache {
         packet_type: PacketType,
         token: &ReplayToken,
     ) -> bool {
-        self.purge(now_ms);
+        let last_purge = self.last_purge_ms.load(std::sync::atomic::Ordering::Relaxed);
+        if now_ms.saturating_sub(last_purge) > 60_000 {
+            self.purge(now_ms);
+            self.last_purge_ms.store(now_ms, std::sync::atomic::Ordering::Relaxed);
+        }
         let k = key(receiver_node_id, packet_type, token);
         let expiry = now_ms.saturating_add(self.ttl_ms);
         self.entries.insert(k, expiry).is_none()

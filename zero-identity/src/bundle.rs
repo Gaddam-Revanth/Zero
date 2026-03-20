@@ -63,6 +63,8 @@ pub struct OwnedKeyBundle {
     pub spk_index: u32,
     /// Unix timestamp of last SPK rotation.
     pub spk_created_at: u64,
+    /// History of old signed prekeys to support out-of-order handshakes.
+    pub old_spks: std::collections::HashMap<u32, SignedPrekey>,
 }
 
 impl OwnedKeyBundle {
@@ -77,6 +79,7 @@ impl OwnedKeyBundle {
             opks,
             spk_index: 0,
             spk_created_at: created_at,
+            old_spks: std::collections::HashMap::new(),
         })
     }
 
@@ -100,9 +103,16 @@ impl OwnedKeyBundle {
 
     /// Rotate the signed prekey (call every 7 days).
     pub fn rotate_spk(&mut self, now: u64) {
+        let old_spk = std::mem::replace(&mut self.current_spk, SignedPrekey::generate(self.spk_index + 1, &self.keypair.isk));
+        self.old_spks.insert(self.spk_index, old_spk);
         self.spk_index += 1;
-        self.current_spk = SignedPrekey::generate(self.spk_index, &self.keypair.isk);
         self.spk_created_at = now;
+        
+        // Prune old SPKs (keep only last 10)
+        if self.old_spks.len() > 10 {
+            let min_index = self.old_spks.keys().min().cloned().unwrap();
+            self.old_spks.remove(&min_index);
+        }
     }
 
     /// Replenish OPKs when running low.

@@ -35,6 +35,7 @@ uuid               = { workspace = true }
 chrono             = { workspace = true }
 bytes              = { workspace = true }
 parking_lot        = { workspace = true }
+argon2             = { workspace = true }
 
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }

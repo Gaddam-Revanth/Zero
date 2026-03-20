@@ -53,6 +53,8 @@ pub struct GroupState {
     /// Our current sender ratchet state (HMAC-SHA256 chain).
     #[serde(skip)]
     pub sender_chain: Option<[u8; 32]>,
+    /// Counter for group messages to ensure unique nonces.
+    pub message_counter: u32,
 }
 
 impl GroupState {
@@ -87,6 +89,7 @@ impl GroupState {
             gpk,
             members,
             sender_chain: Some(initial_chain),
+            message_counter: 0,
         }
     }
 

@@ -3137,6 +3137,7 @@ dependencies = [
 name = "zero-protocol"
 version = "1.0.0"
 dependencies = [
+ "argon2",
  "bytes",
  "chrono",
  "dashmap",

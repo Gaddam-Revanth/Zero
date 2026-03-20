@@ -11,18 +11,22 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use zero_ratchet::RatchetSession;
 use zero_crypto::aead::{encrypt, decrypt, AeadKey, AeadNonce};
-use zero_crypto::kdf::{hkdf_extract, hkdf_expand, KdfContext};
 use crate::error::ZeroError;
 
-/// Derives a 32-byte storage key from a passphrase using HKDF.
-/// In production this should use Argon2id for key stretching.
+/// Derives a 32-byte storage key from a passphrase using Argon2id.
 fn derive_storage_key(passphrase: &[u8]) -> Result<AeadKey, ZeroError> {
-    let prk = hkdf_extract(b"ZERO-ZR-storage-v1", passphrase);
-    let key = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-storage-key"), 32)
-        .map_err(|e| ZeroError::Custom(format!("KDF error: {:?}", e)))?;
-    let mut arr = [0u8; 32];
-    arr.copy_from_slice(&key);
-    Ok(AeadKey(arr))
+    use argon2::{Argon2, Algorithm, Version, Params};
+    
+    let mut key = [0u8; 32];
+    let salt = b"ZERO-ZR-storage-salt-v1"; // In production: use per-user salt stored in config
+    
+    let params = Params::new(15360, 2, 1, None).map_err(|e| ZeroError::Custom(e.to_string()))?;
+    let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+    
+    argon2.hash_password_into(passphrase, salt, &mut key)
+        .map_err(|e| ZeroError::Custom(format!("Argon2 error: {}", e)))?;
+        
+    Ok(AeadKey(key))
 }
 
 /// Serialized, encrypted session blob stored on disk.

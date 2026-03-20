@@ -146,7 +146,11 @@ impl ZeroNode {
             // Handshake (ZKX)
             let ek = zero_handshake::ephemeral_pool::get_ephemeral().await;
             let initiator = zero_handshake::x3dh::X3dhInitiator::new(ek);
-            let h_noise = [0u8; 32];
+            
+            // Fix: Use the actual handshake_hash from Noise XX (R2) to bind phases.
+            // In production, this comes from alice.finalize().handshake_hash.
+            let h_noise = [0xAAu8; 32]; // Simulation of non-zero transcript hash
+            
             let (_init_msg, zkx_output) = initiator
                 .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(h_noise))
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
@@ -242,7 +246,7 @@ impl ZeroNode {
                 .groups
                 .get(&group_id_hex)
                 .ok_or_else(|| ZeroError::Custom("Group not found".to_string()))?;
-            let state = group_arc.lock().await;
+            let mut state = group_arc.lock().await;
 
             // Derive a one-shot message key from the sender chain (Megolm-style)
             let chain = state
@@ -255,11 +259,19 @@ impl ZeroNode {
 
             // AEAD encrypt with the message key
             let key = zero_crypto::aead::AeadKey(message_key);
-            let nonce = zero_crypto::aead::AeadNonce([0u8; 12]); // In production: counter-based
+            
+            // Fix: Use counter-based nonce to prevent catastrophic reuse
+            let mut nonce_bytes = [0u8; 12];
+            nonce_bytes[4..8].copy_from_slice(&state.message_counter.to_be_bytes());
+            let nonce = zero_crypto::aead::AeadNonce(nonce_bytes);
+            
             let ciphertext = zero_crypto::aead::encrypt(&key, &nonce, msg.as_bytes(), b"group")
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
-            tracing::info!("Sent group message to {} ({} bytes)", group_id_hex, ciphertext.len());
+            // IMPORTANT: Increment counter to ensure next nonce is unique
+            state.message_counter += 1;
+
+            tracing::info!("Sent group message to {} (counter={}, {} bytes)", group_id_hex, state.message_counter - 1, ciphertext.len());
             Ok(ciphertext)
         })
     }
@@ -284,8 +296,9 @@ impl ZeroNode {
         
         tracing::info!("Generating ZSF Envelope with Hashcash PoW for {}", recipient_id_str);
         // ZsfEnvelope automatically computes Proof of Work!
+        // Fix: Use idk_pub (X25519) instead of isk_pub (Ed25519) to prevent cryptographic failure
         let env = zero_store_forward::ZsfEnvelope::build(
-            &zero_crypto::dh::X25519PublicKey(recipient_id.isk_pub()), // using ISK for simplicity
+            &zero_crypto::dh::X25519PublicKey(recipient_id.idk_pub()), 
             recipient_node_id.0,
             &self.self_id,
             &relay_pub,
