@@ -136,6 +136,10 @@ async fn benchmark_messaging_overhead() {
 
         let tls_overhead = 16 + 5; 
         println!("  TLS 1.3 (est) Overhead: {} bytes ({:.2}%)", tls_overhead, (tls_overhead as f64 / size as f64) * 100.0);
+
+        let tox_overhead = 40 + 24; // 40-byte net_crypto header + 24-byte MAC
+        println!("  Tox (est) Overhead:     {} bytes ({:.2}%)", tox_overhead, (tox_overhead as f64 / size as f64) * 100.0);
+        println!();
     }
 }
 

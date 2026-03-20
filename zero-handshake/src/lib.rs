@@ -24,5 +24,5 @@ pub mod ephemeral_pool;
 
 pub use error::HandshakeError;
 pub use master_secret::{MasterSecret, ZkxOutput, MASTER_SECRET_SIZE};
-pub use noise::{NoiseHandshakeState, NoiseRole};
+pub use noise::{NoiseHandshakeState, NoiseRole, HandshakePrologue};
 pub use x3dh::{X3dhInitiator, X3dhResponder, ZkxInitMessage};
