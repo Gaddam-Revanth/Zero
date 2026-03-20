@@ -122,7 +122,7 @@ impl OwnedKeyBundle {
         
         // Prune old SPKs (keep only last 10)
         if self.old_spks.len() > 10 {
-            let min_index = self.old_spks.keys().min().cloned().unwrap();
+            let min_index = self.old_spks.keys().min().copied().unwrap_or_default();
             self.old_spks.remove(&min_index);
         }
     }
@@ -138,6 +138,7 @@ impl OwnedKeyBundle {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

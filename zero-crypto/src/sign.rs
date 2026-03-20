@@ -93,7 +93,8 @@ impl Ed25519Keypair {
         if signature.0.len() != ED25519_SIGNATURE_SIZE {
             return Err(CryptoError::InvalidSignature);
         }
-        let sig_bytes: [u8; 64] = signature.0.as_slice().try_into().unwrap();
+        let sig_bytes: [u8; 64] = signature.0.as_slice().try_into()
+            .map_err(|_| CryptoError::InvalidSignature)?;
         let sig = Signature::from_bytes(&sig_bytes);
         self.signing_key.verifying_key()
             .verify(message, &sig)
@@ -116,7 +117,8 @@ pub fn ed25519_verify(
     if signature.0.len() != ED25519_SIGNATURE_SIZE {
         return Err(CryptoError::InvalidSignature);
     }
-    let sig_bytes: [u8; 64] = signature.0.as_slice().try_into().unwrap();
+    let sig_bytes: [u8; 64] = signature.0.as_slice().try_into()
+        .map_err(|_| CryptoError::InvalidSignature)?;
     let sig = Signature::from_bytes(&sig_bytes);
     vk.verify(message, &sig)
         .map_err(|_| CryptoError::SignatureVerificationFailed)

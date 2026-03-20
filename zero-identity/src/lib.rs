@@ -16,6 +16,9 @@
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
 
 pub mod bundle;
 pub mod encoding;

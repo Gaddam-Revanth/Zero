@@ -82,6 +82,7 @@ pub fn base58_decode(s: &str) -> Result<Vec<u8>, IdentityError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

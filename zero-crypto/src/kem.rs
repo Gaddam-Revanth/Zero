@@ -95,7 +95,8 @@ pub fn ml_kem_768_encapsulate(
     }
 
     // Deserialize encapsulation key
-    let ek_arr: &[u8; ML_KEM_768_EK_SIZE] = ek.0.as_slice().try_into().unwrap();
+    let ek_arr: &[u8; ML_KEM_768_EK_SIZE] = ek.0.as_slice().try_into()
+        .map_err(|_| CryptoError::InvalidKeyLength { expected: ML_KEM_768_EK_SIZE, got: ek.0.len() })?;
     let encaps_key = EncapsulationKey768::new(ek_arr.into())
         .map_err(|_| CryptoError::KemEncapsulationFailed)?;
 
@@ -130,12 +131,14 @@ pub fn ml_kem_768_decapsulate(
     }
 
     // Reconstruct decapsulation key from its seed
-    let seed_arr: &[u8; ML_KEM_768_DK_SIZE] = dk.0.as_slice().try_into().unwrap();
+    let seed_arr: &[u8; ML_KEM_768_DK_SIZE] = dk.0.as_slice().try_into()
+        .map_err(|_| CryptoError::InvalidKeyLength { expected: ML_KEM_768_DK_SIZE, got: dk.0.len() })?;
     let seed = Seed::from(*seed_arr);
     let decaps_key = DecapsulationKey768::new(&seed);
 
     // Reconstruct ciphertext
-    let ct_arr: &[u8; ML_KEM_768_CT_SIZE] = ct.0.as_slice().try_into().unwrap();
+    let ct_arr: &[u8; ML_KEM_768_CT_SIZE] = ct.0.as_slice().try_into()
+        .map_err(|_| CryptoError::InvalidKeyLength { expected: ML_KEM_768_CT_SIZE, got: ct.0.len() })?;
     let ciphertext = Ciphertext::from(*ct_arr);
 
     // Infallible: FIPS 203 implicit rejection returns pseudorandom key on tampering
@@ -148,6 +151,7 @@ pub fn ml_kem_768_decapsulate(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

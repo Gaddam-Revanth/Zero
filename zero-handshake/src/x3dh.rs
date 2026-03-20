@@ -177,7 +177,7 @@ impl X3dhResponder {
         let alice_ek_pub  = init_msg.alice_ek_pub.clone();
 
         if init_msg.bob_opk_index.is_none() {
-            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
             if bob_bundle_owned.recent_handshakes.len() > 1000 {
                 bob_bundle_owned.recent_handshakes.retain(|_, &mut ts| now.saturating_sub(ts) < 3600);
             }
@@ -190,11 +190,11 @@ impl X3dhResponder {
         let alice_idk_pub = init_msg.alice_idk_pub.clone();
 
         let spk_sk = if bob_bundle_owned.current_spk.index == init_msg.bob_spk_index {
-            X25519SecretKey(bob_bundle_owned.current_spk.secret_key.as_ref().unwrap().0)
+            X25519SecretKey(bob_bundle_owned.current_spk.secret_key.as_ref().ok_or(HandshakeError::AuthenticationFailed)?.0)
         } else {
             let old_spk = bob_bundle_owned.old_spks.get(&init_msg.bob_spk_index)
                 .ok_or_else(|| HandshakeError::BundleVerificationFailed(format!("SPK index {} not found in history", init_msg.bob_spk_index)))?;
-            X25519SecretKey(old_spk.secret_key.as_ref().unwrap().0)
+            X25519SecretKey(old_spk.secret_key.as_ref().ok_or(HandshakeError::AuthenticationFailed)?.0)
         };
 
         let idk_sk = bob_keypair.idk.secret_key();
@@ -266,6 +266,7 @@ impl X3dhResponder {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use zero_identity::{bundle::OwnedKeyBundle, zeroid::ZeroId};

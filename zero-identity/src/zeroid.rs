@@ -114,7 +114,8 @@ impl ZeroId {
         let isk_pub = keypair.isk.public_key().0;
         let idk_pub = keypair.idk.public_key().0;
         let pq_hash_full = keypair.pq_isk_hash();
-        let pq_hash: [u8; 4] = pq_hash_full[..4].try_into().unwrap();
+        let mut pq_hash = [0u8; 4];
+        pq_hash.copy_from_slice(&pq_hash_full[..4]);
 
         let checksum = compute_checksum(&isk_pub, &idk_pub, &pq_hash, &nospam);
         let mut raw = [0u8; RAW_SIZE];
@@ -151,22 +152,31 @@ impl ZeroId {
 
     /// Decode to individual components.
     pub fn components(&self) -> ZeroIdComponents {
-        let isk_pub: [u8; 32] = self.raw[ISK_OFFSET..IDK_OFFSET].try_into().unwrap();
-        let idk_pub: [u8; 32] = self.raw[IDK_OFFSET..PQ_HASH_OFFSET].try_into().unwrap();
-        let pq_hash: [u8; 4] = self.raw[PQ_HASH_OFFSET..NOSPAM_OFFSET].try_into().unwrap();
-        let nospam: [u8; 4] = self.raw[NOSPAM_OFFSET..CHECKSUM_OFFSET].try_into().unwrap();
-        let checksum: [u8; 2] = self.raw[CHECKSUM_OFFSET..RAW_SIZE].try_into().unwrap();
+        let mut isk_pub = [0u8; 32];
+        isk_pub.copy_from_slice(&self.raw[ISK_OFFSET..IDK_OFFSET]);
+        let mut idk_pub = [0u8; 32];
+        idk_pub.copy_from_slice(&self.raw[IDK_OFFSET..PQ_HASH_OFFSET]);
+        let mut pq_hash = [0u8; 4];
+        pq_hash.copy_from_slice(&self.raw[PQ_HASH_OFFSET..NOSPAM_OFFSET]);
+        let mut nospam = [0u8; 4];
+        nospam.copy_from_slice(&self.raw[NOSPAM_OFFSET..CHECKSUM_OFFSET]);
+        let mut checksum = [0u8; 2];
+        checksum.copy_from_slice(&self.raw[CHECKSUM_OFFSET..RAW_SIZE]);
         ZeroIdComponents { isk_pub, idk_pub, pq_hash, nospam, checksum }
     }
 
     /// Return the ISK public key bytes — the canonical peer identifier.
     pub fn isk_pub(&self) -> [u8; 32] {
-        self.raw[ISK_OFFSET..IDK_OFFSET].try_into().unwrap()
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&self.raw[ISK_OFFSET..IDK_OFFSET]);
+        arr
     }
 
     /// Return the IDK public key bytes.
     pub fn idk_pub(&self) -> [u8; 32] {
-        self.raw[IDK_OFFSET..PQ_HASH_OFFSET].try_into().unwrap()
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&self.raw[IDK_OFFSET..PQ_HASH_OFFSET]);
+        arr
     }
 
     /// Raw bytes of the ZERO ID.
@@ -212,6 +222,7 @@ fn compute_checksum(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
