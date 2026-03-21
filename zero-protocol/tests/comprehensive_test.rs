@@ -17,6 +17,7 @@ mod integration_tests {
 
     fn establish_ratchet_pair() -> (RatchetSession, RatchetSession) {
         let alice_kp = ZeroKeypair::generate().unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
         let mut bob_owned = OwnedKeyBundle::generate(0).unwrap();
         let bob_id = ZeroId::from_keypair(&bob_owned.keypair, [0u8; 4]);
         let bob_bundle = bob_owned.public_bundle(&bob_id);
@@ -25,7 +26,7 @@ mod integration_tests {
         let ek = X25519Keypair::generate();
         let alice_init_kp = alice_kp;
         let initiator = X3dhInitiator::new(ek);
-        let (init_msg, alice_ms) = initiator.initiate(&alice_init_kp, &bob_bundle).unwrap();
+        let (init_msg, alice_ms) = initiator.initiate(&alice_id, &alice_init_kp, &bob_bundle).unwrap();
         let (bob_ms, _) = X3dhResponder::respond(&mut bob_owned, &init_msg).unwrap();
         assert_eq!(alice_ms.0, bob_ms.0, "ZKX master secrets must match");
 

@@ -22,7 +22,7 @@ impl std::fmt::Debug for X25519SecretKey {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct X25519Keypair {
     #[serde(with = "serde_bytes")]
     pub secret: [u8; 32],
@@ -78,24 +78,12 @@ impl X25519Keypair {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct X25519SharedSecret(#[serde(with = "serde_bytes")] pub [u8; X25519_KEY_SIZE]);
 
 impl std::fmt::Debug for X25519SharedSecret {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("X25519SharedSecret([REDACTED])")
-    }
-}
-
-impl Zeroize for X25519SharedSecret {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-    }
-}
-
-impl Drop for X25519SharedSecret {
-    fn drop(&mut self) {
-        self.zeroize();
     }
 }
 

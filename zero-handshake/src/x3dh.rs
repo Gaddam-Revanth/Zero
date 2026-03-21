@@ -15,6 +15,8 @@ use super::master_secret::{MasterSecret, MASTER_SECRET_SIZE};
 /// The initial ZKX message Alice sends to Bob.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ZkxInitMessage {
+    /// Alice's ZERO ID.
+    pub alice_id: zero_identity::zeroid::ZeroId,
     /// Alice's ISK public key.
     pub alice_isk_pub: Ed25519PublicKey,
     /// Alice's IDK public key.
@@ -53,10 +55,11 @@ impl X3dhInitiator {
     /// Start the X3DH key agreement with Bob.
     pub fn initiate(
         &self,
+        alice_id: &zero_identity::zeroid::ZeroId,
         alice_keypair: &ZeroKeypair,
         bob_bundle: &KeyBundle,
     ) -> Result<(ZkxInitMessage, MasterSecret), HandshakeError> {
-        self.initiate_with_noise_hash(alice_keypair, bob_bundle, None)
+        self.initiate_with_noise_hash(alice_id, alice_keypair, bob_bundle, None)
     }
 
     /// Start the X3DH key agreement with Bob, optionally binding to the Noise XX handshake hash.
@@ -65,6 +68,7 @@ impl X3dhInitiator {
     /// derivation to cryptographically bind the Noise and X3DH phases.
     pub fn initiate_with_noise_hash(
         &self,
+        alice_id: &zero_identity::zeroid::ZeroId,
         alice_keypair: &ZeroKeypair,
         bob_bundle: &KeyBundle,
         noise_hash: Option<[u8; 32]>,
@@ -141,6 +145,7 @@ impl X3dhInitiator {
         };
 
         let init_msg = ZkxInitMessage {
+            alice_id: alice_id.clone(),
             alice_isk_pub: alice_keypair.isk.public_key(),
             alice_idk_pub: alice_keypair.idk.public_key(),
             alice_ek_pub: self.ek.public_key(),
@@ -173,6 +178,11 @@ impl X3dhResponder {
         init_msg: &ZkxInitMessage,
         noise_hash: Option<[u8; 32]>,
     ) -> Result<(MasterSecret, [u8; 32]), HandshakeError> {
+        // Verify Alice's identity keys match her ZeroId
+        if !init_msg.alice_id.verify_keys(&init_msg.alice_isk_pub.0, &init_msg.alice_idk_pub.0) {
+            return Err(HandshakeError::AuthenticationFailed);
+        }
+
         let bob_keypair = &bob_bundle_owned.keypair;
         let alice_ek_pub  = init_msg.alice_ek_pub.clone();
 
@@ -274,12 +284,13 @@ mod tests {
     #[test]
     fn test_zkx_master_secrets_match() {
         let alice_kp = ZeroKeypair::generate().unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
         let mut bob_owned = OwnedKeyBundle::generate(0).unwrap();
         let bob_id = ZeroId::from_keypair(&bob_owned.keypair, [0u8; 4]);
         let bob_bundle = bob_owned.public_bundle(&bob_id);
 
         let initiator = X3dhInitiator::new(X25519Keypair::generate());
-        let (init_msg, alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
+        let (init_msg, alice_ms) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle).unwrap();
 
         let mut bob_owned_correct = bob_owned;
         let (bob_ms, _bob_tag) = X3dhResponder::respond(

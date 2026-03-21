@@ -16,6 +16,7 @@ use zero_crypto::{
     kdf::{hkdf, hkdf_extract, hkdf_expand, KdfContext},
 };
 use serde::{Deserialize, Serialize};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// R2: Structured Handshake Prologue for Downgrade Resistance.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -55,7 +56,7 @@ pub const NOISE_PROTOCOL_NAME: &[u8] = b"Noise_XX_25519_ChaChaPoly_BLAKE2b";
 pub const NOISE_MAX_MESSAGE: usize = 65535;
 
 /// Role in the Noise handshake.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Zeroize)]
 pub enum NoiseRole {
     /// Initiator (Alice — sends first message).
     Initiator,
@@ -64,6 +65,7 @@ pub enum NoiseRole {
 }
 
 /// Noise handshake symmetric state (ck + h).
+#[derive(Zeroize, ZeroizeOnDrop)]
 struct SymmetricState {
     /// Chaining key — updated via HKDF after each DH.
     ck: [u8; 32],
@@ -170,6 +172,7 @@ pub struct NoiseOutput {
 }
 
 /// Noise XX handshake state machine.
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct NoiseHandshakeState {
     role: NoiseRole,
     sym: SymmetricState,
@@ -178,8 +181,10 @@ pub struct NoiseHandshakeState {
     /// Local ephemeral keypair (fresh per session).
     local_ephemeral: X25519Keypair,
     /// Remote ephemeral public key (learned during handshake).
+    #[zeroize(skip)]
     remote_ephemeral: Option<X25519PublicKey>,
     /// Remote static public key (learned during handshake).
+    #[zeroize(skip)]
     remote_static: Option<X25519PublicKey>,
     /// Which message step we are on (0, 1, 2).
     step: usize,
@@ -198,8 +203,8 @@ impl NoiseHandshakeState {
         Self {
             role,
             sym,
-            local_static,
-            local_ephemeral,
+            local_static: local_static.clone(),
+            local_ephemeral: local_ephemeral.clone(),
             remote_ephemeral: None,
             remote_static: None,
             step: 0,
@@ -352,7 +357,7 @@ impl NoiseHandshakeState {
             NoiseRole::Initiator => (k1, k2),
             NoiseRole::Responder => (k2, k1),
         };
-        let remote_static_key = self.remote_static
+        let remote_static_key = self.remote_static.clone()
             .ok_or_else(|| HandshakeError::NoiseError("Missing remote static".into()))?;
         Ok(NoiseOutput {
             send_key,

@@ -10,6 +10,7 @@
 use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use zero_ratchet::RatchetSession;
+use zero_identity::bundle::OwnedKeyBundle;
 use zero_crypto::aead::{encrypt, decrypt, AeadKey, AeadNonce};
 use crate::error::ZeroError;
 
@@ -76,6 +77,45 @@ pub fn load_session(path: &Path, passphrase: &[u8]) -> Result<RatchetSession, Ze
 
     zero_crypto::cbor::from_slice(&plaintext)
         .map_err(|e| ZeroError::Custom(format!("Deserialize session: {}", e)))
+}
+/// Save an `OwnedKeyBundle` to `path`, encrypted with the given passphrase.
+pub fn save_identity(
+    bundle: &OwnedKeyBundle,
+    path: &Path,
+    passphrase: &[u8],
+) -> Result<(), ZeroError> {
+    let plaintext = zero_crypto::cbor::to_vec(bundle)
+        .map_err(|e| ZeroError::Custom(format!("Serialize: {}", e)))?;
+    let key = derive_storage_key(passphrase)?;
+    let nonce = AeadNonce::random();
+    let ciphertext = encrypt(&key, &nonce, &plaintext, b"ZERO-identity-v1")
+        .map_err(|e| ZeroError::Custom(format!("Encrypt: {:?}", e)))?;
+
+    let blob = EncryptedSession { nonce: nonce.0, ciphertext };
+    let bytes = zero_crypto::cbor::to_vec(&blob)
+        .map_err(|e| ZeroError::Custom(format!("Outer serialize: {}", e)))?;
+
+    std::fs::write(path, bytes)
+        .map_err(|e| ZeroError::Custom(format!("Write identity: {}", e)))?;
+
+    tracing::info!("Saved ZERO identity to {}", path.display());
+    Ok(())
+}
+
+/// Load and decrypt an `OwnedKeyBundle` from `path`.
+pub fn load_identity(path: &Path, passphrase: &[u8]) -> Result<OwnedKeyBundle, ZeroError> {
+    let bytes = std::fs::read(path)
+        .map_err(|e| ZeroError::Custom(format!("Read identity: {}", e)))?;
+    let blob: EncryptedSession = zero_crypto::cbor::from_slice(&bytes)
+        .map_err(|e| ZeroError::Custom(format!("Outer deserialize: {}", e)))?;
+
+    let key = derive_storage_key(passphrase)?;
+    let nonce = AeadNonce(blob.nonce);
+    let plaintext = decrypt(&key, &nonce, &blob.ciphertext, b"ZERO-identity-v1")
+        .map_err(|e| ZeroError::Custom(format!("Decrypt identity: {:?}", e)))?;
+
+    zero_crypto::cbor::from_slice(&plaintext)
+        .map_err(|e| ZeroError::Custom(format!("Deserialize identity: {}", e)))
 }
 
 /// Returns the session file path for a given contact ID within the storage directory.

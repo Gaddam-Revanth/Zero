@@ -47,8 +47,10 @@ impl std::fmt::Debug for MlKem768SharedSecret {
 }
 
 /// A paired ML-KEM-768 encapsulation and decapsulation keypair.
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct MlKem768Keypair {
     /// The encapsulation (public) key.
+    #[zeroize(skip)]
     pub ek: MlKem768EncapsKey,
     /// The decapsulation (private) key as a 64-byte seed.
     pub dk: MlKem768DecapsKey,

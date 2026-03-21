@@ -6,21 +6,23 @@ use zero_crypto::{
     dh::{X25519Keypair, X25519PublicKey, X25519SecretKey},
     sign::{Ed25519Keypair, Ed25519PublicKey, Ed25519Signature, ed25519_verify},
 };
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Number of one-time prekeys to generate per batch.
 pub const OPKS_BATCH_SIZE: usize = 100;
 
 /// A signed prekey: one X25519 keypair + Ed25519 signature from ISK proving ownership.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct SignedPrekey {
     /// SPK index (monotonically increasing).
     pub index: u32,
     /// X25519 public key.
+    #[zeroize(skip)]
     pub public_key: X25519PublicKey,
     /// Private key (held locally, never sent).
-    #[serde(skip)]
     pub secret_key: Option<X25519SecretKey>,
     /// Ed25519 signature by ISK over the SPK public key bytes.
+    #[zeroize(skip)]
     pub signature: Ed25519Signature,
 }
 
@@ -74,14 +76,14 @@ pub struct SignedPrekeyPublic {
 }
 
 /// A one-time prekey: single-use X25519 keypair. Consumed on first contact.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct OneTimePrekey {
     /// OPK index within the current batch.
     pub index: u32,
     /// X25519 public key (published to DHT).
+    #[zeroize(skip)]
     pub public_key: X25519PublicKey,
     /// Private key (held locally, used at most once).
-    #[serde(skip)]
     pub secret_key: Option<X25519SecretKey>,
     /// True if this OPK has been consumed.
     pub consumed: bool,

@@ -10,6 +10,7 @@ use zero_store_forward::{ZsfEnvelope, decrypt_outer_for_relay, decrypt_inner};
 fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     // --- Identities / bundles ---
     let alice_kp = ZeroKeypair::generate().expect("alice keypair");
+    let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
     let mut bob_owned = OwnedKeyBundle::generate(0).expect("bob bundle");
     let bob_id = ZeroId::from_keypair(&bob_owned.keypair, [0u8; 4]);
     let bob_bundle = bob_owned.public_bundle(&bob_id);
@@ -18,10 +19,10 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     let prologue = HandshakePrologue::v1_0(0);
 
     let mut alice = NoiseHandshakeState::new(
-        NoiseRole::Initiator, alice_kp.idk, X25519Keypair::generate(), &prologue,
+        NoiseRole::Initiator, alice_kp.idk.clone(), X25519Keypair::generate(), &prologue,
     );
     let mut bob = NoiseHandshakeState::new(
-        NoiseRole::Responder, bob_owned.keypair.idk, X25519Keypair::generate(), &prologue,
+        NoiseRole::Responder, bob_owned.keypair.idk.clone(), X25519Keypair::generate(), &prologue,
     );
 
     let msg1 = alice.write_message1().expect("msg1");
@@ -39,7 +40,7 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     // --- Phase 2/3: X3DH + ML-KEM (bound to Noise hash) ---
     let initiator = X3dhInitiator::new(X25519Keypair::generate());
     let (init_msg, alice_ms) = initiator
-        .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(noise_hash))
+        .initiate_with_noise_hash(&alice_id, &alice_kp, &bob_bundle, Some(noise_hash))
         .expect("alice initiate");
 
     let (bob_ms, _bob_tag) = X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(noise_hash))

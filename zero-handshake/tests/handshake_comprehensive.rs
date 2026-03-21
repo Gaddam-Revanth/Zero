@@ -27,7 +27,8 @@ mod handshake_tests {
         assert!(bob_bundle.opk.is_some(), "Bundle should have OPK");
 
         let initiator = X3dhInitiator::new(X25519Keypair::generate());
-        let (init_msg, alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
+        let (init_msg, alice_ms) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle).unwrap();
 
         let (bob_ms, _) = X3dhResponder::respond(&mut bob_owned, &init_msg).unwrap();
         assert_eq!(alice_ms.0, bob_ms.0, "Master secrets must match when OPK is used");
@@ -42,7 +43,8 @@ mod handshake_tests {
         bob_bundle.opk = None; // Force no OPK
 
         let initiator = X3dhInitiator::new(X25519Keypair::generate());
-        let (init_msg, alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
+        let (init_msg, alice_ms) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle).unwrap();
         let (bob_ms, _) = X3dhResponder::respond(&mut bob_owned, &init_msg).unwrap();
         assert_eq!(alice_ms.0, bob_ms.0, "Master secrets must match without OPK");
     }
@@ -57,7 +59,8 @@ mod handshake_tests {
 
         let ek = X25519Keypair::generate();
         let initiator = X3dhInitiator::new(ek);
-        let (init_msg, _alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
+        let (init_msg, _alice_ms) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle).unwrap();
 
         // First response should succeed
         X3dhResponder::respond(&mut bob_owned, &init_msg)
@@ -77,10 +80,13 @@ mod handshake_tests {
         let (mut bob1, bundle1) = make_bob();
         let (mut bob2, bundle2) = make_bob();
 
+        let alice_id1 = ZeroId::from_keypair(&alice1, [0u8; 4]);
+        let alice_id2 = ZeroId::from_keypair(&alice2, [0u8; 4]);
+
         let (init1, ms1) = X3dhInitiator::new(X25519Keypair::generate())
-            .initiate(&alice1, &bundle1).unwrap();
+            .initiate(&alice_id1, &alice1, &bundle1).unwrap();
         let (init2, ms2) = X3dhInitiator::new(X25519Keypair::generate())
-            .initiate(&alice2, &bundle2).unwrap();
+            .initiate(&alice_id2, &alice2, &bundle2).unwrap();
 
         let (bob_ms1, _) = X3dhResponder::respond(&mut bob1, &init1).unwrap();
         let (bob_ms2, _) = X3dhResponder::respond(&mut bob2, &init2).unwrap();
@@ -99,7 +105,8 @@ mod handshake_tests {
         let (mut bob2, _) = make_bob(); // different keypair
 
         let initiator = X3dhInitiator::new(X25519Keypair::generate());
-        let (mut init_msg, alice_ms) = initiator.initiate(&alice_kp, &bob_bundle).unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
+        let (mut init_msg, alice_ms) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle).unwrap();
 
         // Corrupt the KEM ciphertext by filling with zeros
         init_msg.kem_ciphertext = vec![0u8; init_msg.kem_ciphertext.len()];
@@ -164,7 +171,8 @@ mod handshake_tests {
 
         // Initiate with the old SPK index
         let initiator = X3dhInitiator::new(X25519Keypair::generate());
-        let (init_msg, _) = initiator.initiate(&alice_kp, &bob_bundle_before_rotate).unwrap();
+        let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
+        let (init_msg, _) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle_before_rotate).unwrap();
 
         // Now Bob rotates his SPK
         bob_owned.rotate_spk(7 * 24 * 3600);

@@ -8,8 +8,10 @@ use zero_crypto::{
     sign::{Ed25519Keypair, Ed25519PublicKey},
 };
 use serde::{Deserialize, Serialize};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// The complete long-term keypair for one ZERO identity.
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct ZeroKeypair {
     /// Ed25519 Identity Signing Key (ISK) — permanent identity anchor.
     pub isk: Ed25519Keypair,

@@ -6,6 +6,7 @@ use crate::{
     skipped_keys::SkippedKeyCache,
 };
 use serde::{Deserialize, Serialize};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 use zero_crypto::{
     aead::{decrypt, encrypt, AeadKey, AeadNonce},
     dh::{X25519Keypair, X25519PublicKey, X25519SecretKey, x25519_diffie_hellman},
@@ -30,7 +31,7 @@ pub struct SessionInit {
 }
 
 /// A ZR ratchet session — maintains all state for one conversation.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct RatchetSession {
     /// Root key (64 bytes).
     rk: Vec<u8>,
@@ -41,8 +42,10 @@ pub struct RatchetSession {
     /// Our current DH ratchet secret key.
     dhs_secret: X25519SecretKey,
     /// Our current DH ratchet public key.
+    #[zeroize(skip)]
     dhs_pub: X25519PublicKey,
     /// Remote party's DH ratchet public key.
+    #[zeroize(skip)]
     dhr: Option<X25519PublicKey>,
     /// Messages sent in current sending chain.
     ns: u32,
@@ -60,6 +63,7 @@ pub struct RatchetSession {
     nhkr: Vec<u8>,
     /// Skipped key cache.
     #[serde(skip)]
+    #[zeroize(skip)]
     skipped: SkippedKeyCache,
 }
 

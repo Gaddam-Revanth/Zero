@@ -7,6 +7,7 @@ use crate::{
     zeroid::ZeroId,
 };
 use serde::{Deserialize, Serialize};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 use zero_crypto::dh::X25519PublicKey;
 use zero_crypto::sign::Ed25519PublicKey;
 
@@ -61,6 +62,7 @@ impl KeyBundle {
 }
 
 /// Owned key bundle — includes private material for the local user.
+#[derive(Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 pub struct OwnedKeyBundle {
     /// The user's long-term keypair.
     pub keypair: ZeroKeypair,
@@ -73,8 +75,10 @@ pub struct OwnedKeyBundle {
     /// Unix timestamp of last SPK rotation.
     pub spk_created_at: u64,
     /// History of old signed prekeys to support out-of-order handshakes.
+    #[zeroize(skip)]
     pub old_spks: std::collections::HashMap<u32, SignedPrekey>,
     /// Cache of recent handshakes to prevent replay DoS when OPKs are omitted.
+    #[zeroize(skip)]
     pub recent_handshakes: std::collections::HashMap<[u8; 32], u64>,
 }
 

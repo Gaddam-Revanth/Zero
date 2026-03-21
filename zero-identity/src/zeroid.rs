@@ -179,6 +179,12 @@ impl ZeroId {
         arr
     }
 
+    /// Verify that the provided ISK and IDK public keys match this ZeroId.
+    pub fn verify_keys(&self, isk_pub: &[u8; 32], idk_pub: &[u8; 32]) -> bool {
+        let c = self.components();
+        &c.isk_pub == isk_pub && &c.idk_pub == idk_pub
+    }
+
     /// Raw bytes of the ZERO ID.
     pub fn as_bytes(&self) -> &[u8; RAW_SIZE] {
         &self.raw

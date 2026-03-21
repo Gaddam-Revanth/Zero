@@ -33,10 +33,11 @@ impl std::fmt::Debug for Ed25519Signature {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 #[serde(transparent)]
 pub struct Ed25519Keypair {
     #[serde(with = "serde_signing_key")]
+    #[zeroize(skip)] // SigningKey handles its own zeroization or we can't derive it
     signing_key: SigningKey,
 }
 

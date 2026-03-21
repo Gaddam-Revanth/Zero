@@ -72,6 +72,7 @@ async fn benchmark_tls_handshake() -> std::time::Duration {
 
 async fn benchmark_zkx_handshake() -> std::time::Duration {
     let alice_kp = ZeroKeypair::generate().expect("Failed to generate Alice KP");
+    let alice_id = ZeroId::from_keypair(&alice_kp, [0u8; 4]);
     let mut bob_owned = OwnedKeyBundle::generate(0).expect("Failed to generate Bob bundle");
     let bob_id = ZeroId::from_keypair(&bob_owned.keypair, [0u8; 4]);
     let bob_bundle = bob_owned.public_bundle(&bob_id);
@@ -83,7 +84,7 @@ async fn benchmark_zkx_handshake() -> std::time::Duration {
     let initiator = X3dhInitiator::new(zero_crypto::dh::X25519Keypair::generate());
     let h_noise = [0u8; 32];
     let (init_msg, _zk_output) = initiator
-        .initiate_with_noise_hash(&alice_kp, &bob_bundle, Some(h_noise))
+        .initiate_with_noise_hash(&alice_id, &alice_kp, &bob_bundle, Some(h_noise))
         .expect("ZKX Initiator failed");
     let x3dh_init_time = start_x3dh.elapsed();
     println!("  Initiator (3 DH + KEM Encaps): {:?}", x3dh_init_time);
