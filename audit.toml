@@ -1,0 +1,17 @@
+# cargo-audit configuration file
+# See https://docs.rs/cargo-audit/latest/cargo_audit/config/index.html
+
+[advisories]
+# RUSTSEC-2025-0141: bincode is unmaintained — used transitively by uniffi 0.28.3
+# We cannot upgrade or replace it as it is a dependency of the uniffi code generator.
+# Risk: None — bincode is used only in generated FFI scaffolding (not user/protocol data paths).
+ignore = [
+    "RUSTSEC-2025-0141",  # bincode (unmaintained), via uniffi_macros
+    "RUSTSEC-2024-0436",  # paste (unmaintained), via uniffi_core / uniffi_bindgen
+]
+
+[yanked]
+# digest 0.11.1 is yanked but is a transitive dep of ml-kem 0.3.0-rc.0 (release candidate).
+# We are intentionally using a pre-release version of ml-kem for post-quantum crypto.
+# This will be resolved when ml-kem releases a stable version.
+enabled = false
