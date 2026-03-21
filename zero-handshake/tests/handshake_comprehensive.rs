@@ -117,7 +117,7 @@ mod handshake_tests {
     #[test]
     fn test_noise_xx_full_handshake_and_message_exchange() {
         use zero_handshake::noise::{NoiseHandshakeState, NoiseRole, HandshakePrologue};
-        use zero_crypto::aead::{encrypt, decrypt};
+        use zero_crypto::aead::encrypt;
 
         let alice_static = X25519Keypair::generate();
         let bob_static = X25519Keypair::generate();
