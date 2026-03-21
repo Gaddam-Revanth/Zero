@@ -15,16 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy
 
-    - name: Check Strict Lints (zero-crypto, zero-handshake, zero-identity)
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Check Strict Lints
       run: cargo clippy --all-targets --all-features
 
     - name: Cryptographic Unit Tests
@@ -35,6 +35,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: rustsec/audit-check@v1.4.1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install cargo-audit
+      run: cargo install cargo-audit --locked
+
+    - name: Run Dependency Audit
+      # audit.toml in the repo root contains the allowed advisory exceptions
+      # for transitive deps of uniffi and ml-kem RC that we cannot control.
+      run: cargo audit
