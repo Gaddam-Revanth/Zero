@@ -1,0 +1,361 @@
+﻿cargo :    Compiling 
+zero-crypto v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-crypto)
+At line:1 char:1
++ cargo test 
+--all-features 2>&1 | 
+Out-File test.txt 
+-Encoding utf8
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (   Compiling    
+ ze...RO\zero-crypt    
+o):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+   Compiling zero-wire 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-w
+ire)
+   Compiling 
+zero-identity v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-identity)
+   Compiling 
+zero-ratchet v1.0.0 (C:
+\Users\Revanth\Download
+s\ZERO\zero-ratchet)
+   Compiling 
+zero-transport v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-transport
+)
+   Compiling zero-dht 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-d
+ht)
+   Compiling 
+zero-handshake v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-handshake
+)
+   Compiling 
+zero-store-forward 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-s
+tore-forward)
+   Compiling 
+zero-groups v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-groups)
+   Compiling 
+zero-relay v1.0.0 (C:\U
+sers\Revanth\Downloads\
+ZERO\zero-relay)
+   Compiling 
+zero-protocol v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-protocol)
+    Finished `test` 
+profile [unoptimized + 
+debuginfo] target(s) 
+in 48.71s
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_crypto-f655
+7ef7ef1aa427.exe)
+
+running 3 tests
+test dh::tests::test_dh_exchange ... ok
+test kem::tests::test_ml_kem_768_round_trip ... ok
+test kem::tests::test_ml_kem_768_wrong_key_fails ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_dht-e10ed88
+2cf48cb9d.exe)
+
+running 10 tests
+test kbucket::tests::test_bucket_full ... ok
+test kbucket::tests::test_dedup_moves_to_back ... ok
+test kbucket::tests::test_add_and_retrieve ... ok
+test kbucket::tests::test_remove_node ... ok
+test routing_table::tests::test_self_not_added ... ok
+test routing_table::tests::test_add_and_find ... ok
+test routing_table::tests::test_closest_nodes_sorted ... ok
+test node_record::tests::test_wrong_key_fails ... ok
+test node_record::tests::test_record_sign_verify ... ok
+test node_record::tests::test_encrypt_decrypt_record ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_groups-7f9e
+f4a5db673e15.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_handshake-2
+2b2099ff94a6df2.exe)
+
+running 2 tests
+test noise::tests::test_noise_xx_full_handshake ... ok
+test x3dh::tests::test_zkx_master_secrets_match ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_identity-2b
+73c76f6a37415e.exe)
+
+running 18 tests
+test encoding::tests::test_invalid_character_fails ... ok
+test encoding::tests::test_encode_decode_roundtrip ... ok
+test encoding::tests::test_74_byte_roundtrip ... ok
+test encoding::tests::test_known_vector ... ok
+test prekey::tests::test_opk_consume_once ... ok
+test zeroid::tests::test_encode_decode_roundtrip ... ok
+test zeroid::tests::test_isk_pub_matches_keypair ... ok
+test keypair::tests::test_generate_identity ... ok
+test zeroid::tests::test_tampered_id_fails_checksum ... ok
+test prekey::tests::test_spk_wrong_isk_fails ... ok
+test prekey::tests::test_spk_signature_verifies ... ok
+test keypair::tests::test_two_identities_differ ... ok
+test zeroid::tests::test_two_ids_differ ... ok
+test prekey::tests::test_opk_batch_size ... ok
+test prekey::tests::test_opk_indices_sequential ... ok
+test bundle::tests::test_spk_rotation ... ok
+test bundle::tests::test_bundle_cbor_roundtrip ... ok
+test bundle::tests::test_bundle_verify ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_protocol-90
+3cc6090b758c3d.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\benc
+hmark_comparison.rs (ta
+rget\debug\deps\benchma
+rk_comparison-650369ef0
+7088f9f.exe)
+
+running 3 tests
+test benchmark_ping_pong_latency ... ok
+test benchmark_handshake_efficiency ... ok
+test benchmark_messaging_overhead ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests\e2e_
+offline_zsf.rs (target\
+debug\deps\e2e_offline_
+zsf-93b3cd88b128025b.ex
+e)
+
+running 1 test
+test e2e_zkx_to_zr_to_zsf_offline_delivery ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 36.68s
+
+     Running tests\prot
+ocol_fuzz_v1.rs (target
+\debug\deps\protocol_fu
+zz_v1-f56448622db8257d.
+exe)
+
+running 1 test
+test protocol_fuzzing_v1 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests\prot
+ocol_test_v1.rs (target
+\debug\deps\protocol_te
+st_v1-c56e8a34e5d0be85.
+exe)
+
+running 1 test
+test multi_node_protocol_simulation_v1 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+
+     Running tests\scal
+ing_test_v1.rs (target\
+debug\deps\scaling_test
+_v1-739297397699e38f.ex
+e)
+
+running 1 test
+test multi_node_scaling_simulation_v1 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_ratchet-4a7
+9b46435e0a16e.exe)
+
+running 1 test
+test state::tests::test_zr_encrypt_decrypt_roundtrip ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_relay-18912
+d81590c6be4.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_store_forwa
+rd-07e7401df43a5d1f.exe
+)
+
+running 5 tests
+test pow::tests::test_pow_generate_verify ... ok
+test envelope::tests::test_zsf_outer_tamper_fails ... ok
+test envelope::tests::test_zsf_invalid_pow_rejected ... ok
+test envelope::tests::test_zsf_wrong_relay_key_fails ... ok
+test envelope::tests::test_zsf_envelope_outer_inner_roundtrip ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 38.94s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_transport-2
+68ca3abbb3081b2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\quic
+_loopback_wire.rs (targ
+et\debug\deps\quic_loop
+back_wire-63b629169b837
+4a6.exe)
+
+running 1 test
+test quic_loopback_sends_and_receives_framed_packet ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\tcp_
+tls_loopback_wire.rs (t
+arget\debug\deps\tcp_tl
+s_loopback_wire-4cb509f
+65dcace95.exe)
+
+running 1 test
+test tcp_tls_loopback_sends_and_receives_framed_packet ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests 
+src\lib.rs (target\debu
+g\deps\zero_wire-c47246
+007258aacc.exe)
+
+running 1 test
+test replay::tests::test_replay_cache_rejects_replay ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_crypto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests zero_dht
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_groups
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_handshake
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_identity
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_protocol
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_ratchet
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests zero_relay
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_store_forward
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests 
+zero_transport
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests zero_wire
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

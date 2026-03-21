@@ -1,0 +1,221 @@
+﻿cargo :     Fetching 
+advisory database from 
+`https://github.com/Rus
+tSec/advisory-db.git`
+At line:1 char:62
++ ... rgo-binstall; 
+cargo binstall 
+cargo-audit -y; cargo 
+audit 2>&1 | Out-F ...
++                      
+                       
+     ~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Fetching    
+ ad...dvisory-db.gi    
+t`:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+      Loaded 982 
+security advisories 
+(from C:\Users\Revanth\
+.cargo\advisory-db)
+    Updating crates.io 
+index
+    Scanning 
+Cargo.lock for 
+vulnerabilities (339 
+crate dependencies)
+Crate:     aws-lc-sys
+Version:   0.38.0
+Title:     AWS-LC X.509 Name Constraints Bypass via Wildcard/Unicode CN
+Date:      2026-03-19
+ID:        RUSTSEC-2026-0044
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0044
+Solution:  Upgrade to >=0.39.0
+Dependency tree:
+aws-lc-sys 0.38.0
+ΓööΓöÇΓöÇ aws-lc-rs 1.16.1
+    Γö£ΓöÇΓöÇ rustls-webpki 0.103.9
+    Γöé   Γö£ΓöÇΓöÇ rustls-platform-verifier 0.6.2
+    Γöé   Γöé   ΓööΓöÇΓöÇ quinn-proto 0.11.13
+    Γöé   Γöé       ΓööΓöÇΓöÇ quinn 0.11.9
+    Γöé   Γöé           ΓööΓöÇΓöÇ zero-transport 1.0.0
+    Γöé   Γöé               Γö£ΓöÇΓöÇ zero-relay 1.0.0
+    Γöé   Γöé               Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+    Γöé   Γöé               ΓööΓöÇΓöÇ zero-protocol 1.0.0
+    Γöé   ΓööΓöÇΓöÇ rustls 0.23.37
+    Γöé       Γö£ΓöÇΓöÇ zero-transport 1.0.0
+    Γöé       Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+    Γöé       Γö£ΓöÇΓöÇ tokio-rustls 0.26.4
+    Γöé       Γöé   Γö£ΓöÇΓöÇ zero-transport 1.0.0
+    Γöé       Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+    Γöé       Γö£ΓöÇΓöÇ rustls-platform-verifier 0.6.2
+    Γöé       Γö£ΓöÇΓöÇ quinn-proto 0.11.13
+    Γöé       ΓööΓöÇΓöÇ quinn 0.11.9
+    ΓööΓöÇΓöÇ rustls 0.23.37
+
+Crate:     aws-lc-sys
+Version:   0.38.0
+Title:     CRL Distribution Point Scope Check Logic Error in AWS-LC
+Date:      2026-03-19
+ID:        RUSTSEC-2026-0048
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0048
+Severity:  7.4 (high)
+Solution:  Upgrade to >=0.39.0
+
+Crate:     quinn-proto
+Version:   0.11.13
+Title:     Denial of service in Quinn endpoints
+Date:      2026-03-09
+ID:        RUSTSEC-2026-0037
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0037
+Severity:  8.7 (high)
+Solution:  Upgrade to >=0.11.14
+Dependency tree:
+quinn-proto 0.11.13
+ΓööΓöÇΓöÇ quinn 0.11.9
+    ΓööΓöÇΓöÇ zero-transport 1.0.0
+        Γö£ΓöÇΓöÇ zero-relay 1.0.0
+        Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+        ΓööΓöÇΓöÇ zero-protocol 1.0.0
+
+Crate:     rustls-webpki
+Version:   0.103.9
+Title:     CRLs not considered authorative by Distribution Point due to faulty matching logic
+Date:      2026-03-20
+ID:        RUSTSEC-2026-0049
+URL:       https://rustsec.org/advisories/RUSTSEC-2026-0049
+Solution:  Upgrade to >=0.103.10
+Dependency tree:
+rustls-webpki 0.103.9
+Γö£ΓöÇΓöÇ rustls-platform-verifier 0.6.2
+Γöé   ΓööΓöÇΓöÇ quinn-proto 0.11.13
+Γöé       ΓööΓöÇΓöÇ quinn 0.11.9
+Γöé           ΓööΓöÇΓöÇ zero-transport 1.0.0
+Γöé               Γö£ΓöÇΓöÇ zero-relay 1.0.0
+Γöé               Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+Γöé               ΓööΓöÇΓöÇ zero-protocol 1.0.0
+ΓööΓöÇΓöÇ rustls 0.23.37
+    Γö£ΓöÇΓöÇ zero-transport 1.0.0
+    Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+    Γö£ΓöÇΓöÇ tokio-rustls 0.26.4
+    Γöé   Γö£ΓöÇΓöÇ zero-transport 1.0.0
+    Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+    Γö£ΓöÇΓöÇ rustls-platform-verifier 0.6.2
+    Γö£ΓöÇΓöÇ quinn-proto 0.11.13
+    ΓööΓöÇΓöÇ quinn 0.11.9
+
+Crate:     bincode
+Version:   1.3.3
+Warning:   unmaintained
+Title:     Bincode is unmaintained
+Date:      2025-12-16
+ID:        RUSTSEC-2025-0141
+URL:       https://rustsec.org/advisories/RUSTSEC-2025-0141
+Dependency tree:
+bincode 1.3.3
+ΓööΓöÇΓöÇ uniffi_macros 0.28.3
+    ΓööΓöÇΓöÇ uniffi 0.28.3
+        ΓööΓöÇΓöÇ zero-protocol 1.0.0
+
+Crate:     paste
+Version:   1.0.15
+Warning:   unmaintained
+Title:     paste - no longer maintained
+Date:      2024-10-07
+ID:        RUSTSEC-2024-0436
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0436
+Dependency tree:
+paste 1.0.15
+Γö£ΓöÇΓöÇ uniffi_core 0.28.3
+Γöé   ΓööΓöÇΓöÇ uniffi 0.28.3
+Γöé       ΓööΓöÇΓöÇ zero-protocol 1.0.0
+ΓööΓöÇΓöÇ uniffi_bindgen 0.28.3
+    Γö£ΓöÇΓöÇ uniffi_build 0.28.3
+    Γöé   ΓööΓöÇΓöÇ uniffi 0.28.3
+    ΓööΓöÇΓöÇ uniffi 0.28.3
+
+Crate:     serde_cbor
+Version:   0.11.2
+Warning:   unmaintained
+Title:     serde_cbor is unmaintained
+Date:      2021-08-15
+ID:        RUSTSEC-2021-0127
+URL:       https://rustsec.org/advisories/RUSTSEC-2021-0127
+Dependency tree:
+serde_cbor 0.11.2
+Γö£ΓöÇΓöÇ zero-transport 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-relay 1.0.0
+Γöé   Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+Γö£ΓöÇΓöÇ zero-store-forward 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+Γöé   ΓööΓöÇΓöÇ zero-groups 1.0.0
+Γöé       ΓööΓöÇΓöÇ zero-protocol 1.0.0
+Γö£ΓöÇΓöÇ zero-relay 1.0.0
+Γö£ΓöÇΓöÇ zero-ratchet 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-store-forward 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+Γöé   ΓööΓöÇΓöÇ zero-groups 1.0.0
+Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+Γö£ΓöÇΓöÇ zero-identity 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-transport 1.0.0
+error: 4 
+vulnerabilities found!
+warning: 4 allowed 
+warnings found
+Γöé   Γö£ΓöÇΓöÇ zero-store-forward 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-relay 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-ratchet 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-handshake 1.0.0
+Γöé   Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+Γöé   Γö£ΓöÇΓöÇ zero-groups 1.0.0
+Γöé   ΓööΓöÇΓöÇ zero-dht 1.0.0
+Γöé       ΓööΓöÇΓöÇ zero-protocol 1.0.0
+Γö£ΓöÇΓöÇ zero-handshake 1.0.0
+Γö£ΓöÇΓöÇ zero-groups 1.0.0
+ΓööΓöÇΓöÇ zero-dht 1.0.0
+
+Crate:     digest
+Version:   0.11.1
+Warning:   yanked
+Dependency tree:
+digest 0.11.1
+ΓööΓöÇΓöÇ sha3 0.11.0-rc.8
+    ΓööΓöÇΓöÇ ml-kem 0.3.0-rc.0
+        ΓööΓöÇΓöÇ zero-crypto 1.0.0
+            Γö£ΓöÇΓöÇ zero-transport 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-relay 1.0.0
+            Γöé   Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+            Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+            Γö£ΓöÇΓöÇ zero-store-forward 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+            Γöé   ΓööΓöÇΓöÇ zero-groups 1.0.0
+            Γöé       ΓööΓöÇΓöÇ zero-protocol 1.0.0
+            Γö£ΓöÇΓöÇ zero-relay 1.0.0
+            Γö£ΓöÇΓöÇ zero-ratchet 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-store-forward 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+            Γöé   ΓööΓöÇΓöÇ zero-groups 1.0.0
+            Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+            Γö£ΓöÇΓöÇ zero-identity 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-transport 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-store-forward 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-relay 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-ratchet 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-protocol 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-handshake 1.0.0
+            Γöé   Γöé   ΓööΓöÇΓöÇ zero-protocol 1.0.0
+            Γöé   Γö£ΓöÇΓöÇ zero-groups 1.0.0
+            Γöé   ΓööΓöÇΓöÇ zero-dht 1.0.0
+            Γöé       ΓööΓöÇΓöÇ zero-protocol 1.0.0
+            Γö£ΓöÇΓöÇ zero-handshake 1.0.0
+            Γö£ΓöÇΓöÇ zero-groups 1.0.0
+            ΓööΓöÇΓöÇ zero-dht 1.0.0
+

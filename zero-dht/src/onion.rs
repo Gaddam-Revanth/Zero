@@ -36,7 +36,7 @@ impl OnionPacket {
             next_hop: hops[2], // H3 performs the actual DHT lookup
             inner_payload: payload.to_vec(),
         };
-        let l3_encoded = serde_cbor::to_vec(&layer3).map_err(|_| DhtError::SerializationError("OnionLayer 3".into()))?;
+        let l3_encoded = zero_crypto::cbor::to_vec(&layer3).map_err(|_| DhtError::SerializationError("OnionLayer 3".into()))?;
         let nonce3 = AeadNonce::random();
         let mut ct3_blob = nonce3.0.to_vec();
         let ct3 = encrypt(&hop_keys[2], &nonce3, &l3_encoded, &[])
@@ -48,7 +48,7 @@ impl OnionPacket {
             next_hop: hops[2],
             inner_payload: ct3_blob,
         };
-        let l2_encoded = serde_cbor::to_vec(&layer2).map_err(|_| DhtError::SerializationError("OnionLayer 2".into()))?;
+        let l2_encoded = zero_crypto::cbor::to_vec(&layer2).map_err(|_| DhtError::SerializationError("OnionLayer 2".into()))?;
         let nonce2 = AeadNonce::random();
         let mut ct2_blob = nonce2.0.to_vec();
         let ct2 = encrypt(&hop_keys[1], &nonce2, &l2_encoded, &[])
@@ -60,7 +60,7 @@ impl OnionPacket {
             next_hop: hops[1],
             inner_payload: ct2_blob,
         };
-        let l1_encoded = serde_cbor::to_vec(&layer1).map_err(|_| DhtError::SerializationError("OnionLayer 1".into()))?;
+        let l1_encoded = zero_crypto::cbor::to_vec(&layer1).map_err(|_| DhtError::SerializationError("OnionLayer 1".into()))?;
         let nonce1 = AeadNonce::random();
         let mut ct1_blob = nonce1.0.to_vec();
         let ct1 = encrypt(&hop_keys[0], &nonce1, &l1_encoded, &[])
@@ -88,7 +88,7 @@ impl OnionPacket {
         let pt = decrypt(my_key, &nonce, &ct[12..], &[]) 
             .map_err(|_| DhtError::AuthenticationFailed)?;
         
-        let layer: OnionLayer = serde_cbor::from_slice(&pt)
+        let layer: OnionLayer = zero_crypto::cbor::from_slice(&pt)
             .map_err(|_| DhtError::SerializationError("Peel OnionLayer".into()))?;
             
         Ok(layer)

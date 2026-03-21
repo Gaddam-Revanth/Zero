@@ -25,7 +25,6 @@ uniffi             = { workspace = true }
 tokio              = { workspace = true }
 hex                = "0.4"
 serde              = { workspace = true }
-serde_cbor         = { workspace = true }
 thiserror          = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -46,7 +45,6 @@ proptest    = { workspace = true }
 zero-wire   = { path = "../zero-wire" }
 zero-dht     = { path = "../zero-dht" }
 zero-crypto = { path = "../zero-crypto" }
-serde_cbor  = { workspace = true }
 bytes       = { workspace = true }
 hex         = "0.4"
 rustls      = { workspace = true }

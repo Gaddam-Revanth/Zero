@@ -48,12 +48,12 @@ pub struct DhtPacket {
 impl DhtPacket {
     /// Serialize to CBOR.
     pub fn to_cbor(&self) -> Vec<u8> {
-        serde_cbor::to_vec(self).unwrap_or_default()
+        zero_crypto::cbor::to_vec(self).unwrap_or_default()
     }
 
     /// Deserialize from CBOR.
     pub fn from_cbor(bytes: &[u8]) -> Option<Self> {
-        serde_cbor::from_slice(bytes).ok()
+        zero_crypto::cbor::from_slice(bytes).ok()
     }
 }
 

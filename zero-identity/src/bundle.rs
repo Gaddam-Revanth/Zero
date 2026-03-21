@@ -51,12 +51,12 @@ impl KeyBundle {
 
     /// Serialize to CBOR bytes for DHT storage.
     pub fn to_cbor(&self) -> Result<Vec<u8>, IdentityError> {
-        serde_cbor::to_vec(self).map_err(|e| IdentityError::SerializationError(e.to_string()))
+        zero_crypto::cbor::to_vec(self).map_err(|e| IdentityError::SerializationError(e.to_string()))
     }
 
     /// Deserialize from CBOR bytes.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, IdentityError> {
-        serde_cbor::from_slice(bytes).map_err(|e| IdentityError::SerializationError(e.to_string()))
+        zero_crypto::cbor::from_slice(bytes).map_err(|e| IdentityError::SerializationError(e.to_string()))
     }
 }
 

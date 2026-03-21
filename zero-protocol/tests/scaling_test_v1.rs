@@ -56,7 +56,7 @@ async fn multi_node_scaling_simulation_v1() {
         zero_dht::onion::OnionPacket::wrap_3_hops(b"TARGET_REACHED", &hops, &[keys[0].clone(), keys[1].clone(), keys[2].clone()], eph_pub.0).unwrap()
     };
 
-    let onion_bytes = serde_cbor::to_vec(&onion_packet).unwrap();
+    let onion_bytes = zero_crypto::cbor::to_vec(&onion_packet).unwrap();
     let packet = Packet {
         header: PacketHeader::new(
             Version::V1_0,

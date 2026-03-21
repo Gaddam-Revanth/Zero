@@ -197,7 +197,7 @@ impl NatManager {
             to_id: target_id.to_string(),
             candidates: local_candidates,
         };
-        let _encoded = serde_cbor::to_vec(&exchange)
+        let _encoded = zero_crypto::cbor::to_vec(&exchange)
             .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
         // In production: deliver _encoded via ZSF relay to target_id,
@@ -230,7 +230,7 @@ impl NatManager {
             sdp_type: sdp_type.to_string(),
             sdp: local_sdp.to_string(),
         };
-        let _encoded = serde_cbor::to_vec(&relay_msg)
+        let _encoded = zero_crypto::cbor::to_vec(&relay_msg)
             .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
         // In production: _encoded is delivered via ZSF relay mailbox.

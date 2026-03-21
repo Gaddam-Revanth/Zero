@@ -104,7 +104,7 @@ impl EncryptedNodeRecord {
         let aead_key = derive_record_key(&shared.0, &ephemeral.public_key().0)
             .map_err(|e| DhtError::CryptoError(e.to_string()))?;
         let nonce = AeadNonce::random();
-        let plaintext = serde_cbor::to_vec(record)
+        let plaintext = zero_crypto::cbor::to_vec(record)
             .map_err(|e| DhtError::SerializationError(e.to_string()))?;
         let mut aad = Vec::new();
         aad.extend_from_slice(b"ZERO-v1");
@@ -143,7 +143,7 @@ impl EncryptedNodeRecord {
         
         let pt = decrypt(&aead_key, &nonce, &ct[12..], &aad)
             .map_err(|_| DhtError::CryptoError("Decryption failed".into()))?;
-        let record: NodeRecord = serde_cbor::from_slice(&pt)
+        let record: NodeRecord = zero_crypto::cbor::from_slice(&pt)
             .map_err(|e| DhtError::SerializationError(e.to_string()))?;
         record.verify()?;
         

@@ -67,12 +67,12 @@ impl ZavManager {
 
     /// Serialize any signal to CBOR bytes for transport over ZR or ZSF.
     pub fn encode_signal(&self, signal: &ZavSignal) -> Result<Vec<u8>, String> {
-        serde_cbor::to_vec(signal).map_err(|e| e.to_string())
+        zero_crypto::cbor::to_vec(signal).map_err(|e| e.to_string())
     }
 
     /// Deserialize a ZavSignal from CBOR bytes.
     pub fn decode_signal(&self, bytes: &[u8]) -> Result<ZavSignal, String> {
-        serde_cbor::from_slice(bytes).map_err(|e| e.to_string())
+        zero_crypto::cbor::from_slice(bytes).map_err(|e| e.to_string())
     }
 }
 

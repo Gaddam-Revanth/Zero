@@ -71,7 +71,7 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     let zr_msg = alice_zr
         .encrypt(b"hello via zsf", associated_data)
         .expect("zr encrypt");
-    let zr_msg_bytes = serde_cbor::to_vec(&zr_msg).expect("cbor ratchet msg");
+    let zr_msg_bytes = zero_crypto::cbor::to_vec(&zr_msg).expect("cbor ratchet msg");
 
     // --- Offline delivery via ZSF ---
     let relay_kp = X25519Keypair::generate();
@@ -97,7 +97,7 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     assert_eq!(inner.sender_id, sender_id);
 
     // Recipient decrypts the ZR message
-    let zr_msg2: RatchetMessage = serde_cbor::from_slice(&inner.payload).expect("decode ratchet msg");
+    let zr_msg2: RatchetMessage = zero_crypto::cbor::from_slice(&inner.payload).expect("decode ratchet msg");
     let pt = bob_zr.decrypt(&zr_msg2, associated_data, 0).expect("zr decrypt");
     assert_eq!(pt, b"hello via zsf");
 }

@@ -39,7 +39,7 @@ async fn multi_node_protocol_simulation_v1() {
         zero_dht::onion::OnionPacket::wrap_3_hops(b"FIND_CHARLIE", &hops, &keys, eph_pub.0).unwrap()
     };
 
-    let onion_bytes = serde_cbor::to_vec(&onion_packet).unwrap();
+    let onion_bytes = zero_crypto::cbor::to_vec(&onion_packet).unwrap();
     let packet = Packet {
         header: PacketHeader::new(
             Version { major: 1, minor: 0 },

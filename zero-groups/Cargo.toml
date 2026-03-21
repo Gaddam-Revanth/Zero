@@ -13,7 +13,6 @@ zero-identity      = { path = "../zero-identity" }
 zero-ratchet       = { path = "../zero-ratchet" }
 zero-store-forward = { path = "../zero-store-forward" }
 serde              = { workspace = true }
-serde_cbor         = { workspace = true }
 zeroize            = { workspace = true }
 rand               = { workspace = true }
 thiserror          = { workspace = true }

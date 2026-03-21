@@ -24,6 +24,7 @@
 #![deny(clippy::panic)]
 
 pub mod aead;
+pub mod cbor;
 pub mod dh;
 pub mod error;
 pub mod hash;

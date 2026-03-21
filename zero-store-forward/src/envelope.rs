@@ -58,7 +58,7 @@ impl ZsfEnvelope {
             sender_ephemeral_pub: sender_ephemeral.public_key().0,
             payload,
         };
-        let inner_pt = serde_cbor::to_vec(&inner)
+        let inner_pt = zero_crypto::cbor::to_vec(&inner)
             .map_err(|_| ZsfError::DecryptionFailed)?;
 
         let shared_inner = sender_ephemeral.diffie_hellman(recipient_idk_pub);
@@ -87,7 +87,7 @@ impl ZsfEnvelope {
             .diffie_hellman(relay_pub);
         let relay_key = derive_envelope_key(&relay_shared.0, &relay_ephemeral.public_key().0)?;
         let relay_nonce = AeadNonce::random();
-        let outer_pt = serde_cbor::to_vec(&outer)
+        let outer_pt = zero_crypto::cbor::to_vec(&outer)
             .map_err(|_| ZsfError::DecryptionFailed)?;
         let outer_ct = encrypt(&relay_key, &relay_nonce, &outer_pt, b"ZSF-outer")
             .map_err(|_| ZsfError::DecryptionFailed)?;
@@ -137,7 +137,7 @@ pub fn decrypt_outer_for_relay(
     let pt = decrypt(&relay_key, &nonce, &env.outer_ciphertext[12..], b"ZSF-outer")
         .map_err(|_| ZsfError::OuterDecryptionFailed)?;
 
-    serde_cbor::from_slice(&pt).map_err(|e| ZsfError::SerializationError(e.to_string()))
+    zero_crypto::cbor::from_slice(&pt).map_err(|e| ZsfError::SerializationError(e.to_string()))
 }
 
 /// Inner envelope decryption by the recipient.
@@ -168,7 +168,7 @@ pub fn decrypt_inner(
     let pt = decrypt(&inner_key, &nonce, &inner_ct[44..], b"ZSF-inner")
         .map_err(|_| ZsfError::DecryptionFailed)?;
 
-    serde_cbor::from_slice(&pt).map_err(|_| ZsfError::DecryptionFailed)
+    zero_crypto::cbor::from_slice(&pt).map_err(|_| ZsfError::DecryptionFailed)
 }
 
 fn derive_envelope_key(shared: &[u8], ephem: &[u8]) -> Result<AeadKey, ZsfError> {

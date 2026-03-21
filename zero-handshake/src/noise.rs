@@ -44,7 +44,7 @@ impl HandshakePrologue {
     /// Encode to bytes for Noise mix_hash.
     pub fn encode(&self) -> Vec<u8> {
         // Use CBOR or simple binary packing. We'll use CBOR for consistency with ZERO wire.
-        serde_cbor::to_vec(self).unwrap_or_default()
+        zero_crypto::cbor::to_vec(self).unwrap_or_default()
     }
 }
 

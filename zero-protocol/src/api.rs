@@ -307,7 +307,7 @@ impl ZeroNode {
         
         tracing::info!("Successfully built ZSF Envelope with PoW: {}", env.proof_of_work);
         
-        let env_bytes = serde_cbor::to_vec(&env).map_err(|e| ZeroError::Custom(e.to_string()))?;
+        let env_bytes = zero_crypto::cbor::to_vec(&env).map_err(|e| ZeroError::Custom(e.to_string()))?;
         Ok(env_bytes)
     }
 
@@ -370,7 +370,7 @@ impl ZeroNode {
                         }
                         zero_wire::PacketType::ZdhtFindRecordReq => {
                             // Logic: Peel onion layer if it's an OnionPacket, or answer if it's plaintext
-                            if let Ok(onion) = serde_cbor::from_slice::<zero_dht::onion::OnionPacket>(&packet.body) {
+                            if let Ok(onion) = zero_crypto::cbor::from_slice::<zero_dht::onion::OnionPacket>(&packet.body) {
                                 let bundle = self.bundle.lock().await;
                                 let shared = bundle.keypair.idk.diffie_hellman(&zero_crypto::dh::X25519PublicKey(onion.ephemeral_pub));
                                 let key_bytes = zero_crypto::kdf::hkdf(b"salt", &shared.0, zero_crypto::kdf::KdfContext::OnionHopKey, 32).unwrap_or_default();
@@ -442,7 +442,7 @@ impl ZeroContact {
             let path = crate::persistence::session_path(&self.storage_dir, &self.id);
             let _ = crate::persistence::save_session(&ratchet, &path, &self.passphrase);
             
-            let ciphertext = serde_cbor::to_vec(&zr_msg)
+            let ciphertext = zero_crypto::cbor::to_vec(&zr_msg)
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
             tracing::info!("→ Sent to {} ({} bytes)", self.id, ciphertext.len());
             Ok(ciphertext)
@@ -455,7 +455,7 @@ impl ZeroContact {
     /// (a CBOR-encoded `RatchetMessage`). Returns the plaintext.
     pub fn receive_message(&self, ciphertext_cbor: Vec<u8>) -> Result<Vec<u8>, ZeroError> {
         self.block_on(async {
-            let zr_msg: zero_ratchet::RatchetMessage = serde_cbor::from_slice(&ciphertext_cbor)
+            let zr_msg: zero_ratchet::RatchetMessage = zero_crypto::cbor::from_slice(&ciphertext_cbor)
                 .map_err(|e| ZeroError::Custom(format!("CBOR decode: {}", e)))?;
             let ratchet_arc = self.ratchets.get(&self.id)
                 .ok_or_else(|| ZeroError::Custom("No active ratchet session".to_string()))?;
@@ -484,7 +484,7 @@ impl ZeroContact {
                     "Prepared '{}' for {} in {} chunks",
                     offer.filename, self.id, chunks.len()
                 );
-                serde_cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
+                zero_crypto::cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
             } else {
                 // Fallback: inline offer without chunking
                 let content = tokio::fs::read(p).await
@@ -497,7 +497,7 @@ impl ZeroContact {
                     total_chunks: 1,
                     file_hash,
                 };
-                serde_cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
+                zero_crypto::cbor::to_vec(&offer).map_err(|e| ZeroError::Custom(e.to_string()))
             }
         })
     }

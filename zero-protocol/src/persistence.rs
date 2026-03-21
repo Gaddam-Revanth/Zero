@@ -44,7 +44,7 @@ pub fn save_session(
     path: &Path,
     passphrase: &[u8],
 ) -> Result<(), ZeroError> {
-    let plaintext = serde_cbor::to_vec(session)
+    let plaintext = zero_crypto::cbor::to_vec(session)
         .map_err(|e| ZeroError::Custom(format!("Serialize: {}", e)))?;
     let key = derive_storage_key(passphrase)?;
     let nonce = AeadNonce::random();
@@ -52,7 +52,7 @@ pub fn save_session(
         .map_err(|e| ZeroError::Custom(format!("Encrypt: {:?}", e)))?;
 
     let blob = EncryptedSession { nonce: nonce.0, ciphertext };
-    let bytes = serde_cbor::to_vec(&blob)
+    let bytes = zero_crypto::cbor::to_vec(&blob)
         .map_err(|e| ZeroError::Custom(format!("Outer serialize: {}", e)))?;
 
     std::fs::write(path, bytes)
@@ -66,7 +66,7 @@ pub fn save_session(
 pub fn load_session(path: &Path, passphrase: &[u8]) -> Result<RatchetSession, ZeroError> {
     let bytes = std::fs::read(path)
         .map_err(|e| ZeroError::Custom(format!("Read session: {}", e)))?;
-    let blob: EncryptedSession = serde_cbor::from_slice(&bytes)
+    let blob: EncryptedSession = zero_crypto::cbor::from_slice(&bytes)
         .map_err(|e| ZeroError::Custom(format!("Outer deserialize: {}", e)))?;
 
     let key = derive_storage_key(passphrase)?;
@@ -74,7 +74,7 @@ pub fn load_session(path: &Path, passphrase: &[u8]) -> Result<RatchetSession, Ze
     let plaintext = decrypt(&key, &nonce, &blob.ciphertext, b"ZR-session-v1")
         .map_err(|e| ZeroError::Custom(format!("Decrypt session: {:?}", e)))?;
 
-    serde_cbor::from_slice(&plaintext)
+    zero_crypto::cbor::from_slice(&plaintext)
         .map_err(|e| ZeroError::Custom(format!("Deserialize session: {}", e)))
 }
 

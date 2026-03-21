@@ -24,6 +24,7 @@ zeroize          = { workspace = true }
 subtle           = { workspace = true }
 curve25519-dalek = { version = "4.1" }
 serde            = { workspace = true }
+ciborium         = { workspace = true }
 thiserror        = { workspace = true }
 hex              = { workspace = true }
 

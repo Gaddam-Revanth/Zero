@@ -236,7 +236,7 @@ fn measure_zr_overhead(data: &[u8]) -> usize {
     }).expect("ZR session init failed");
 
     let msg = session.encrypt(data, b"").expect("ZR encrypt failed");
-    let encoded = serde_cbor::to_vec(&msg).expect("CBOR encode failed");
+    let encoded = zero_crypto::cbor::to_vec(&msg).expect("CBOR encode failed");
     
     encoded.len() - data.len()
 }
