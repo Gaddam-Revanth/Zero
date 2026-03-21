@@ -88,7 +88,7 @@ pub fn stun_discover_public_addr() -> Result<StunAddress, ZeroError> {
         }
         i += 4 + attr_len;
         // Attributes are padded to 4-byte boundaries
-        if attr_len % 4 != 0 { i += 4 - (attr_len % 4); }
+        if !attr_len.is_multiple_of(4) { i += 4 - (attr_len % 4); }
     }
     Err(ZeroError::Custom("STUN: no XOR-MAPPED-ADDRESS in response".to_string()))
 }

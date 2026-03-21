@@ -54,7 +54,7 @@ mod tests {
         let mut n = 0_u64;
         let id = [0xAAu8; 32];
         loop {
-            let n_bytes = (n as u64).to_le_bytes();
+            let n_bytes = n.to_le_bytes();
             let hash = blake2b_256_multi(&[&id, &n_bytes]);
             if count_leading_zero_bits(&hash) >= 10 {
                 assert!(count_leading_zero_bits(&hash) >= 10);

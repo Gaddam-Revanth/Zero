@@ -92,7 +92,7 @@ impl PacketHeader {
 
         let pt_raw = b.get_u16();
         let packet_type = PacketType::from_u16(pt_raw)
-            .ok_or_else(|| WireError::UnsupportedVersion(version))?;
+            .ok_or(WireError::UnsupportedVersion(version))?;
 
         let flags = PacketFlags(b.get_u16());
         let header_len = b.get_u16();

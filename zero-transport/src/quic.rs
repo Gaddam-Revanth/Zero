@@ -43,7 +43,7 @@ pub struct QuicTransport {
 impl QuicTransport {
     /// Bind to a local UDP port and start the QUIC endpoint.
     pub fn bind(addr: SocketAddr) -> Result<Self, TransportError> {
-        let endpoint = Endpoint::client(addr).map_err(|e| TransportError::Io(e))?;
+        let endpoint = Endpoint::client(addr).map_err(TransportError::Io)?;
         Ok(Self { endpoint })
     }
 
@@ -72,14 +72,14 @@ impl QuicTransport {
             .max_concurrent_bidi_streams(16_u32.into());
 
         let endpoint = Endpoint::server(server_config, addr)
-            .map_err(|e| TransportError::Io(e))?;
+            .map_err(TransportError::Io)?;
         Ok((Self { endpoint }, cert_der))
     }
 
     /// Bind a QUIC client endpoint that trusts the provided server certificate DER.
     pub fn bind_client_trusting(addr: SocketAddr, server_cert_der: &[u8]) -> Result<Self, TransportError> {
         ensure_rustls_provider();
-        let mut endpoint = Endpoint::client(addr).map_err(|e| TransportError::Io(e))?;
+        let mut endpoint = Endpoint::client(addr).map_err(TransportError::Io)?;
 
         let mut roots = rustls::RootCertStore::empty();
         roots.add(rustls::pki_types::CertificateDer::from(server_cert_der.to_vec()))

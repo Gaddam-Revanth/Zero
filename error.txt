@@ -1,0 +1,348 @@
+﻿cargo :     Checking 
+zero-crypto v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-crypto)
+At line:1 char:1
++ cargo clippy 
+--all-targets 
+--all-features 
+--message-format=short 
+2>&1 ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Checking    
+ ze...RO\zero-crypt    
+o):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+    Checking zero-wire 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-w
+ire)
+   Compiling 
+zero-protocol v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-protocol)
+zero-wire\src\header.rs
+:94:27: warning: 
+unnecessary closure 
+used to substitute 
+value for 
+`Option::None`
+zero-crypto\src\aead.rs
+:36:18: warning: the 
+loop variable `i` is 
+only used to index 
+`nonce`
+warning: `zero-wire` 
+(lib test) generated 1 
+warning (1 duplicate)
+warning: `zero-wire` 
+(lib) generated 1 
+warning (run `cargo 
+clippy --fix --lib -p 
+zero-wire` to apply 1 
+suggestion)
+warning: `zero-crypto` 
+(lib) generated 1 
+warning
+    Checking 
+zero-identity v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-identity)
+warning: `zero-crypto` 
+(lib test) generated 1 
+warning (1 duplicate)
+    Checking 
+zero-ratchet v1.0.0 (C:
+\Users\Revanth\Download
+s\ZERO\zero-ratchet)
+    Checking 
+zero-transport v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-transport
+)
+    Checking 
+zero-handshake v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-handshake
+)
+    Checking zero-dht 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-d
+ht)
+zero-ratchet\src\skippe
+d_keys.rs:55:5: 
+warning: struct 
+`SkippedKeyCache` has 
+a public `len` method, 
+but no `is_empty` 
+method
+zero-transport\src\quic
+.rs:46:55: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`TransportError::Io`
+zero-transport\src\quic
+.rs:75:22: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`TransportError::Io`
+zero-transport\src\quic
+.rs:82:59: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`TransportError::Io`
+zero-ratchet\src\state.
+rs:304:43: warning: 
+very complex type 
+used. Consider 
+factoring parts into 
+`type` definitions
+zero-dht\src\kbucket.rs
+:74:5: warning: struct 
+`KBucket` has a public 
+`len` method, but no 
+`is_empty` method
+warning: 
+`zero-ratchet` (lib) 
+generated 2 warnings
+    Checking 
+zero-store-forward 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-s
+tore-forward)
+zero-dht\src\node_recor
+d.rs:151:20: warning: 
+manual absolute 
+difference pattern 
+without using 
+`abs_diff`: help: 
+replace with 
+`abs_diff`: `record.tim
+estamp.abs_diff(now_uni
+x)`
+warning: 
+`zero-transport` (lib 
+test) generated 3 
+warnings (3 duplicates)
+warning: 
+`zero-ratchet` (lib 
+test) generated 2 
+warnings (2 duplicates)
+warning: 
+`zero-transport` (lib) 
+generated 3 warnings 
+(run `cargo clippy 
+--fix --lib -p 
+zero-transport` to 
+apply 3 suggestions)
+    Checking 
+zero-relay v1.0.0 (C:\U
+sers\Revanth\Downloads\
+ZERO\zero-relay)
+zero-dht\src\routing_ta
+ble.rs:101:25: 
+warning: the loop 
+variable `byte_idx` is 
+used to index `dist`
+zero-dht\src\lib.rs:112
+:14: warning: the loop 
+variable `i` is used 
+to index `dist`
+warning: `zero-dht` 
+(lib test) generated 4 
+warnings (4 duplicates)
+warning: `zero-dht` 
+(lib) generated 4 
+warnings (run `cargo 
+clippy --fix --lib -p 
+zero-dht` to apply 1 
+suggestion)
+zero-relay\src\server.r
+s:23:17: warning: very 
+complex type used. 
+Consider factoring 
+parts into `type` 
+definitions
+zero-store-forward\src\
+pow.rs:57:27: warning: 
+casting to the same 
+type is unnecessary 
+(`u64` -> `u64`): 
+help: try: `n`
+    Checking 
+zero-groups v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-groups)
+warning: `zero-relay` 
+(lib test) generated 1 
+warning
+warning: 
+`zero-store-forward` 
+(lib test) generated 1 
+warning (run `cargo 
+clippy --fix --lib -p 
+zero-store-forward 
+--tests` to apply 1 
+suggestion)
+warning: `zero-relay` 
+(lib) generated 1 
+warning (1 duplicate)
+C:\Users\Revanth\Downlo
+ads\ZERO\target\debug\b
+uild\zero-protocol-af84
+cc3d4e5b1b55\out/zero.u
+niffi.rs:9:1: warning: 
+empty lines after doc 
+comment
+zero-protocol\src\api.r
+s:525:49: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`ZeroError::Custom`
+zero-protocol\src\api.r
+s:533:49: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`ZeroError::Custom`
+zero-protocol\src\api.r
+s:541:49: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`ZeroError::Custom`
+zero-protocol\src\api.r
+s:549:49: warning: 
+redundant closure: 
+help: replace the 
+closure with the tuple 
+variant itself: 
+`ZeroError::Custom`
+zero-protocol\src\nat.r
+s:91:12: warning: 
+manual implementation 
+of 
+`.is_multiple_of()`: 
+help: replace with: `!a
+ttr_len.is_multiple_of(
+4)`
+warning: 
+`zero-protocol` (lib 
+test) generated 6 
+warnings (3 
+duplicates) (run 
+`cargo clippy --fix 
+--lib -p zero-protocol 
+--tests` to apply 3 
+suggestions)
+warning: 
+`zero-protocol` (lib) 
+generated 6 warnings 
+(3 duplicates) (run 
+`cargo clippy --fix 
+--lib -p 
+zero-protocol` to 
+apply 2 suggestions)
+zero-protocol\tests\pro
+tocol_test_v1.rs:3:1: 
+warning: this import 
+is redundant: help: 
+remove it entirely
+zero-protocol\tests\e2e
+_offline_zsf.rs:21:31: 
+warning: using `clone` 
+on type 
+`X25519Keypair` which 
+implements the `Copy` 
+trait: help: try 
+removing the `clone` 
+call: `alice_kp.idk`
+zero-protocol\tests\e2e
+_offline_zsf.rs:24:31: 
+warning: using `clone` 
+on type 
+`X25519Keypair` which 
+implements the `Copy` 
+trait: help: try 
+removing the `clone` 
+call: 
+`bob_owned.keypair.idk`
+zero-protocol\tests\sca
+ling_test_v1.rs:48:18: 
+warning: the loop 
+variable `i` is only 
+used to index `nodes`
+zero-protocol\tests\pro
+tocol_test_v1.rs:66:13:
+ warning: length 
+comparison to zero: 
+help: using 
+`!is_empty` is clearer 
+and more explicit: `!ci
+phertext.is_empty()`
+warning: 
+`zero-protocol` (test 
+"e2e_offline_zsf") 
+generated 2 warnings 
+(run `cargo clippy 
+--fix --test 
+"e2e_offline_zsf" -p 
+zero-protocol` to 
+apply 2 suggestions)
+zero-protocol\tests\ben
+chmark_comparison.rs:20
+2:5: warning: 
+returning the result 
+of a `let` binding 
+from a block
+zero-protocol\tests\ben
+chmark_comparison.rs:22
+4:5: warning: 
+returning the result 
+of a `let` binding 
+from a block
+warning: 
+`zero-protocol` (test 
+"protocol_test_v1") 
+generated 2 warnings 
+(run `cargo clippy 
+--fix --test 
+"protocol_test_v1" -p 
+zero-protocol` to 
+apply 2 suggestions)
+warning: 
+`zero-protocol` (test 
+"scaling_test_v1") 
+generated 1 warning
+warning: 
+`zero-protocol` (test "
+benchmark_comparison") 
+generated 2 warnings 
+(run `cargo clippy 
+--fix --test 
+"benchmark_comparison" 
+-p zero-protocol` to 
+apply 2 suggestions)
+    Finished `dev` 
+profile [unoptimized + 
+debuginfo] target(s) 
+in 7.96s

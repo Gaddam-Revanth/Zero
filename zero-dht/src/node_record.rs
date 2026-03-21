@@ -148,11 +148,7 @@ impl EncryptedNodeRecord {
         record.verify()?;
         
         // Spec 6.3: Decrypting clients MUST verify freshness window (+/- 10 minutes)
-        let diff = if record.timestamp > now_unix {
-            record.timestamp - now_unix
-        } else {
-            now_unix - record.timestamp
-        };
+        let diff = record.timestamp.abs_diff(now_unix);
         if diff > 600 {
             return Err(DhtError::CryptoError("Freshness window exceeded".into()));
         }

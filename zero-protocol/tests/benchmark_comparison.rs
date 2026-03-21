@@ -197,9 +197,9 @@ async fn measure_tls_latency() -> std::time::Duration {
     tls.write_all(b"ping").await.unwrap();
     let mut buf = [0u8; 4];
     tls.read_exact(&mut buf[..]).await.unwrap();
-    let elapsed = start.elapsed();
     
-    elapsed
+    
+    start.elapsed()
 }
 
 async fn measure_zr_latency() -> std::time::Duration {
@@ -219,9 +219,9 @@ async fn measure_zr_latency() -> std::time::Duration {
     stream.write_all(b"ping").await.unwrap();
     let mut buf = [0u8; 4];
     stream.read_exact(&mut buf[..]).await.unwrap();
-    let elapsed = start.elapsed();
+    
 
-    elapsed
+    start.elapsed()
 }
 
 fn measure_zr_overhead(data: &[u8]) -> usize {

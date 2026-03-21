@@ -1,6 +1,5 @@
 use zero_protocol::api::ZeroNode;
 use zero_wire::{Packet, PacketHeader, PacketType, Version};
-use hex;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn multi_node_protocol_simulation_v1() {
@@ -63,7 +62,7 @@ async fn multi_node_protocol_simulation_v1() {
 
     let msg = "Hello Group!".to_string();
     let ciphertext = alice.send_group_message(group_id.clone(), msg).unwrap();
-    assert!(ciphertext.len() > 0);
+    assert!(!ciphertext.is_empty());
     
     let _path = tmp_dir.join("alice").join("sessions").join(hex::encode(bob_id.isk_pub()));
     println!("Simulation Successful!");

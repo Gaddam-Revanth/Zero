@@ -18,10 +18,10 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     let prologue = HandshakePrologue::v1_0(0);
 
     let mut alice = NoiseHandshakeState::new(
-        NoiseRole::Initiator, alice_kp.idk.clone(), X25519Keypair::generate(), &prologue,
+        NoiseRole::Initiator, alice_kp.idk, X25519Keypair::generate(), &prologue,
     );
     let mut bob = NoiseHandshakeState::new(
-        NoiseRole::Responder, bob_owned.keypair.idk.clone(), X25519Keypair::generate(), &prologue,
+        NoiseRole::Responder, bob_owned.keypair.idk, X25519Keypair::generate(), &prologue,
     );
 
     let msg1 = alice.write_message1().expect("msg1");

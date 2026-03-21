@@ -1,0 +1,157 @@
+﻿cargo :     Checking 
+zero-crypto v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-crypto)
+At line:1 char:1
++ cargo clippy 
+--all-targets 
+--all-features 
+--message-format=short 
+2>&1 ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Checking    
+ ze...RO\zero-crypt    
+o):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+    Checking zero-wire 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-w
+ire)
+   Compiling 
+zero-protocol v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-protocol)
+zero-crypto\src\aead.rs
+:36:18: warning: the 
+loop variable `i` is 
+only used to index 
+`nonce`
+warning: `zero-crypto` 
+(lib) generated 1 
+warning
+    Checking 
+zero-identity v1.0.0 (C
+:\Users\Revanth\Downloa
+ds\ZERO\zero-identity)
+warning: `zero-crypto` 
+(lib test) generated 1 
+warning (1 duplicate)
+    Checking 
+zero-ratchet v1.0.0 (C:
+\Users\Revanth\Download
+s\ZERO\zero-ratchet)
+    Checking 
+zero-transport v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-transport
+)
+    Checking 
+zero-handshake v1.0.0 (
+C:\Users\Revanth\Downlo
+ads\ZERO\zero-handshake
+)
+    Checking zero-dht 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-d
+ht)
+zero-ratchet\src\skippe
+d_keys.rs:55:5: 
+warning: struct 
+`SkippedKeyCache` has 
+a public `len` method, 
+but no `is_empty` 
+method
+zero-ratchet\src\state.
+rs:304:43: warning: 
+very complex type 
+used. Consider 
+factoring parts into 
+`type` definitions
+    Checking 
+zero-relay v1.0.0 (C:\U
+sers\Revanth\Downloads\
+ZERO\zero-relay)
+warning: 
+`zero-ratchet` (lib) 
+generated 2 warnings
+    Checking 
+zero-store-forward 
+v1.0.0 (C:\Users\Revant
+h\Downloads\ZERO\zero-s
+tore-forward)
+warning: 
+`zero-ratchet` (lib 
+test) generated 2 
+warnings (2 duplicates)
+zero-dht\src\kbucket.rs
+:74:5: warning: struct 
+`KBucket` has a public 
+`len` method, but no 
+`is_empty` method
+zero-dht\src\routing_ta
+ble.rs:101:25: 
+warning: the loop 
+variable `byte_idx` is 
+used to index `dist`
+zero-dht\src\lib.rs:112
+:14: warning: the loop 
+variable `i` is used 
+to index `dist`
+zero-relay\src\server.r
+s:23:17: warning: very 
+complex type used. 
+Consider factoring 
+parts into `type` 
+definitions
+warning: `zero-relay` 
+(lib) generated 1 
+warning
+warning: `zero-dht` 
+(lib) generated 3 
+warnings
+warning: `zero-relay` 
+(lib test) generated 1 
+warning (1 duplicate)
+warning: `zero-dht` 
+(lib test) generated 3 
+warnings (3 duplicates)
+    Checking 
+zero-groups v1.0.0 (C:\
+Users\Revanth\Downloads
+\ZERO\zero-groups)
+C:\Users\Revanth\Downlo
+ads\ZERO\target\debug\b
+uild\zero-protocol-af84
+cc3d4e5b1b55\out/zero.u
+niffi.rs:9:1: warning: 
+empty lines after doc 
+comment
+warning: 
+`zero-protocol` (lib 
+test) generated 1 
+warning (1 duplicate)
+warning: 
+`zero-protocol` (lib) 
+generated 1 warning
+zero-protocol\tests\sca
+ling_test_v1.rs:48:18: 
+warning: the loop 
+variable `i` is only 
+used to index `nodes`
+warning: 
+`zero-protocol` (test 
+"scaling_test_v1") 
+generated 1 warning
+    Finished `dev` 
+profile [unoptimized + 
+debuginfo] target(s) 
+in 11.51s

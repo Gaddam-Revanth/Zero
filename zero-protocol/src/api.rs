@@ -522,7 +522,7 @@ impl ZeroContact {
         let call_id = uuid::Uuid::new_v4().to_string();
         let signal = self.zav.create_invite(&call_id, &sdp);
         tracing::info!("Initiating call {} with {}", signal.call_id(), self.id);
-        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+        self.zav.encode_signal(&signal).map_err(ZeroError::Custom)
     }
 
     /// Accept an incoming call with your own SDP answer.
@@ -530,7 +530,7 @@ impl ZeroContact {
     pub fn accept_call(&self, call_id: String, answer_sdp: String) -> Result<Vec<u8>, ZeroError> {
         let signal = self.zav.create_accept(&call_id, &answer_sdp);
         tracing::info!("Accepting call {} from {}", call_id, self.id);
-        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+        self.zav.encode_signal(&signal).map_err(ZeroError::Custom)
     }
 
     /// Reject an incoming call.
@@ -538,7 +538,7 @@ impl ZeroContact {
     pub fn reject_call(&self, call_id: String) -> Result<Vec<u8>, ZeroError> {
         let signal = self.zav.create_reject(&call_id);
         tracing::info!("Rejecting call {} from {}", call_id, self.id);
-        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+        self.zav.encode_signal(&signal).map_err(ZeroError::Custom)
     }
 
     /// Hang up an active call.
@@ -546,6 +546,6 @@ impl ZeroContact {
     pub fn hangup(&self, call_id: String) -> Result<Vec<u8>, ZeroError> {
         let signal = self.zav.create_hangup(&call_id);
         tracing::info!("Hanging up call {} with {}", call_id, self.id);
-        self.zav.encode_signal(&signal).map_err(|e| ZeroError::Custom(e))
+        self.zav.encode_signal(&signal).map_err(ZeroError::Custom)
     }
 }
