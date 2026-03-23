@@ -45,8 +45,8 @@ async fn multi_node_scaling_simulation_v1() {
         // For simplicity in this test, we use the same key (mocking the derivation) 
         // or just derive them properly.
         let mut keys = Vec::new();
-        for i in 1..4 {
-            let shared = ephemeral.diffie_hellman(&zero_crypto::dh::X25519PublicKey(nodes[i].self_id.idk_pub()));
+        for node in &nodes[1..4] {
+            let shared = ephemeral.diffie_hellman(&zero_crypto::dh::X25519PublicKey(node.self_id.idk_pub()));
             let key_bytes = zero_crypto::kdf::hkdf(b"salt", &shared.0, zero_crypto::kdf::KdfContext::OnionHopKey, 32).unwrap();
             let mut arr = [0u8; 32];
             arr.copy_from_slice(&key_bytes);

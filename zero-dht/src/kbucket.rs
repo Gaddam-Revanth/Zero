@@ -75,6 +75,10 @@ impl KBucket {
         self.nodes.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
     /// True if bucket has capacity.
     pub fn has_space(&self) -> bool {
         self.nodes.len() < K_BUCKET_SIZE

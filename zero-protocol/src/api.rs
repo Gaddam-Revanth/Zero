@@ -173,7 +173,7 @@ impl ZeroNode {
             
             let initiator = zero_handshake::x3dh::X3dhInitiator::new(ek);
             let (_init_msg, zkx_output) = initiator
-                .initiate_with_noise_hash(&self.self_id, &alice_kp, &bob_bundle, Some(h_noise))
+                .initiate_with_noise_hash(&self.self_id, alice_kp, &bob_bundle, Some(h_noise))
                 .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
             // Load persisted session or init new one

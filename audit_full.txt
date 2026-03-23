@@ -1,33 +1,25 @@
-﻿cargo :     Fetching 
-advisory database from 
-`https://github.com/Rus
+﻿cargo :     Fetching advisory 
+database from `https://github.com/Rus
 tSec/advisory-db.git`
 At line:1 char:1
-+ cargo audit 2>&1 | 
-Out-File audit3.txt 
--Encoding utf8; 
-Get-Content au ...
++ cargo audit 2>&1 | Out-File 
+audit_full.txt -Encoding utf8; 
+Get-Conten ...
 + ~~~~~~~~~~~~~~~~
-    + CategoryInfo     
-         : NotSpecifi  
-  ed: (    Fetching    
- ad...dvisory-db.gi    
-t`:String) [], Rem    
-oteException
-    + FullyQualifiedEr 
-   rorId : NativeComm  
-  andError
+    + CategoryInfo          : NotSpe 
+   cified: (    Fetching ad...dviso  
+  ry-db.git`:String) [], RemoteExc   
+ eption
+    + FullyQualifiedErrorId : Native 
+   CommandError
  
-      Loaded 982 
-security advisories 
-(from C:\Users\Revanth\
-.cargo\advisory-db)
-    Updating crates.io 
-index
-    Scanning 
-Cargo.lock for 
-vulnerabilities (332 
-crate dependencies)
+      Loaded 982 security advisories 
+(from 
+C:\Users\Revanth\.cargo\advisory-db)
+    Updating crates.io index
+    Scanning Cargo.lock for 
+vulnerabilities (332 crate 
+dependencies)
 Crate:     bincode
 Version:   1.3.3
 Warning:   unmaintained
@@ -95,5 +87,4 @@ digest 0.11.1
             Γö£ΓöÇΓöÇ zero-groups 1.0.0
             ΓööΓöÇΓöÇ zero-dht 1.0.0
 
-warning: 3 allowed 
-warnings found
+warning: 3 allowed warnings found

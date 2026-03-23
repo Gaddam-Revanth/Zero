@@ -96,7 +96,8 @@ pub fn x25519_diffie_hellman(
     let shared = scalar * point;
     
     let output = shared.to_bytes();
-    if output.iter().all(|&b| b == 0) {
+    use subtle::ConstantTimeEq;
+    if output.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
         return Err(CryptoError::InvalidPublicKey);
     }
     Ok(X25519SharedSecret(output))

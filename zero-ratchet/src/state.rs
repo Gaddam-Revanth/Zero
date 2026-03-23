@@ -305,7 +305,9 @@ impl RatchetSession {
     }
 }
 
-fn kdf_rk(rk: &[u8], dh_shared: &[u8]) -> Result<(Vec<u8>, (Vec<u8>, Vec<u8>)), RatchetError> {
+type KdfRkResult = (Vec<u8>, (Vec<u8>, Vec<u8>));
+
+fn kdf_rk(rk: &[u8], dh_shared: &[u8]) -> Result<KdfRkResult, RatchetError> {
     let prk = hkdf_extract(rk, dh_shared);
     let rk = hkdf_expand(&prk, KdfContext::ZrRootChain, 64).map_err(|_| RatchetError::KdfError)?;
     let ck_send = hkdf_expand(&prk, KdfContext::ZrSendChain, 32).map_err(|_| RatchetError::KdfError)?;

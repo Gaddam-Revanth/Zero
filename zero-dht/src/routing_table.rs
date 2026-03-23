@@ -98,9 +98,9 @@ impl RoutingTable {
     fn bucket_index(&self, node_id: &NodeId) -> usize {
         let dist = xor_distance(&self.own_id, node_id);
         // Use the index of the most significant set bit as the bucket index
-        for byte_idx in 0..32 {
-            if dist[byte_idx] != 0 {
-                let bit_pos = dist[byte_idx].leading_zeros() as usize;
+        for (byte_idx, &byte) in dist.iter().enumerate() {
+            if byte != 0 {
+                let bit_pos = byte.leading_zeros() as usize;
                 return byte_idx * 8 + bit_pos;
             }
         }

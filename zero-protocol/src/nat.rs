@@ -183,46 +183,73 @@ impl NatManager {
 
     /// Coordinate a hole-punching attempt (§8.3).
     ///
-    /// CBOR-encodes local candidates as an IceExchange message and would
-    /// dispatch it via ZSF relay to the target. Returns mock remote candidates.
+    /// CBOR-encodes local candidates as an IceExchange message and
+    /// returns the encoded bytes ready for dispatch via ZSF relay.
     pub async fn coordinate_hole_punch(
         &self,
         target_id: &str,
         local_candidates: Vec<NatCandidate>,
-    ) -> Result<Vec<NatCandidate>, ZeroError> {
+    ) -> Result<Vec<u8>, ZeroError> {
         info!("Coordinating hole-punch with: {}", target_id);
 
         let exchange = IceExchange {
-            from_id: "self".to_string(),
+            from_id: "self".to_string(), // In production, this is our ZeroId
             to_id: target_id.to_string(),
             candidates: local_candidates,
         };
-        let _encoded = zero_crypto::cbor::to_vec(&exchange)
-            .map_err(|e| ZeroError::Custom(e.to_string()))?;
+        
+        zero_crypto::cbor::to_vec(&exchange)
+            .map_err(|e| ZeroError::Custom(format!("CBOR encode IceExchange: {}", e)))
+    }
 
-        // In production: deliver _encoded via ZSF relay to target_id,
-        // await their IceExchange reply, attempt simultaneous UDP opens.
-        // For symmetric NATs also try ports: observed_port ± 10.
+    /// Perform the actual simultaneous UDP hole punch (§8.3).
+    /// Effectively guesses ports if the remote is behind a Symmetric NAT.
+    pub async fn perform_udp_hole_punch(
+        &self,
+        remote_candidates: Vec<NatCandidate>,
+    ) -> Result<SocketAddr, ZeroError> {
+        use std::net::UdpSocket;
+        use std::time::Duration;
 
-        Ok(vec![NatCandidate {
-            public_addr: "1.2.3.4:44300".parse().unwrap(),
-            local_addr: "192.168.1.100:44300".parse().unwrap(),
-            nat_type: NatType::RestrictedCone,
-        }])
+        if let Some(cand) = remote_candidates.into_iter().next() {
+            let socket = UdpSocket::bind("0.0.0.0:0")
+                .map_err(|e| ZeroError::Custom(format!("Hole-punch bind: {}", e)))?;
+            socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
+            
+            // Try the observed public port
+            let _ = socket.send_to(b"ZERO-HOLE-PUNCH", cand.public_addr);
+            
+            // If symmetric NAT, attempt port guessing (±10)
+            if matches!(cand.nat_type, NatType::Symmetric) {
+                let base_port = cand.public_addr.port();
+                for offset in -10..=10 {
+                    if offset == 0 { continue; }
+                    let guessed_port = (base_port as i32 + offset) as u16;
+                    let mut guessed_addr = cand.public_addr;
+                    guessed_addr.set_port(guessed_port);
+                    let _ = socket.send_to(b"ZERO-HOLE-PUNCH", guessed_addr);
+                }
+            }
+
+            // In a real flow, we'd await a response here. 
+            // For now, we return the first candidate's public address as the presumed target.
+            return Ok(cand.public_addr);
+        }
+        
+        Err(ZeroError::Custom("No candidates to hole-punch".to_string()))
     }
 
     /// Exchange WebRTC SDP offer/answer via the ZSF relay.
     ///
     /// CBOR-encodes an SdpRelay envelope for delivery to the remote peer.
-    /// The remote peer's answer is returned (production: await from relay mailbox).
-    pub async fn exchange_sdp(
+    pub async fn create_sdp_relay_packet(
         &self,
         self_id: &str,
         target_id: &str,
         local_sdp: &str,
         sdp_type: &str,
-    ) -> Result<String, ZeroError> {
-        info!("Relaying SDP {} → {} ({}B)", sdp_type, target_id, local_sdp.len());
+    ) -> Result<Vec<u8>, ZeroError> {
+        info!("Creating SDP relay packet {} → {} ({}B)", sdp_type, target_id, local_sdp.len());
 
         let relay_msg = SdpRelay {
             from_id: self_id.to_string(),
@@ -230,16 +257,9 @@ impl NatManager {
             sdp_type: sdp_type.to_string(),
             sdp: local_sdp.to_string(),
         };
-        let _encoded = zero_crypto::cbor::to_vec(&relay_msg)
-            .map_err(|e| ZeroError::Custom(e.to_string()))?;
-
-        // In production: _encoded is delivered via ZSF relay mailbox.
-        // Await the SdpRelay{ sdp_type: "answer" } reply from target_id.
-        let answer = format!(
-            "v=0\r\no=- 0 0 IN IP4 {}\r\ns=-\r\nt=0 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=sctp-port:5000\r\n",
-            target_id
-        );
-        Ok(answer)
+        
+        zero_crypto::cbor::to_vec(&relay_msg)
+            .map_err(|e| ZeroError::Custom(format!("CBOR encode SdpRelay: {}", e)))
     }
 }
 

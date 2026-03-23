@@ -109,7 +109,9 @@ pub fn node_id_from_isk(isk_pub: &[u8; 32]) -> NodeId {
 /// Compute XOR distance between two NodeIDs.
 pub fn xor_distance(a: &NodeId, b: &NodeId) -> [u8; 32] {
     let mut dist = [0u8; 32];
-    for i in 0..32 { dist[i] = a.0[i] ^ b.0[i]; }
+    for (i, d) in dist.iter_mut().enumerate() {
+        *d = a.0[i] ^ b.0[i];
+    }
     dist
 }
 

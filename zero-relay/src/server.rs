@@ -14,13 +14,16 @@ pub struct RelayConfig {
     pub keepalive_timeout: u64,
 }
 
+/// Maps NodeID -> Tx channel connecting to their socket.
+pub type RelayRoutes = Arc<tokio::sync::Mutex<HashMap<[u8; 32], mpsc::Sender<Vec<u8>>>>>;
+
 /// A blind TCP relay server.
 /// The ZERO relay server implementation.
 pub struct RelayServer {
     /// Configuration for this relay server.
     pub config: RelayConfig,
     /// Maps NodeID -> Tx channel connecting to their socket.
-    pub routes: Arc<tokio::sync::Mutex<HashMap<[u8; 32], mpsc::Sender<Vec<u8>>>>>,
+    pub routes: RelayRoutes,
 }
 
 impl RelayServer {

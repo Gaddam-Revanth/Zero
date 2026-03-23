@@ -36,13 +36,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-
     - name: Install cargo-audit
-      run: cargo install cargo-audit --locked
+      uses: taiki-e/install-action@cargo-audit
 
     - name: Run Dependency Audit
-      # audit.toml in the repo root contains the allowed advisory exceptions
-      # for transitive deps of uniffi and ml-kem RC that we cannot control.
       run: cargo audit

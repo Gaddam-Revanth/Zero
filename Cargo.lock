@@ -3038,10 +3038,12 @@ name = "zero-groups"
 version = "1.0.0"
 dependencies = [
  "chrono",
+ "ciborium",
  "dashmap",
  "proptest",
  "rand 0.8.5",
  "serde",
+ "serde_json",
  "thiserror 1.0.69",
  "tracing",
  "uuid",

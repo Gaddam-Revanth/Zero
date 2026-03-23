@@ -33,9 +33,9 @@ impl AeadNonce {
 
     pub fn increment(&self) -> Self {
         let mut nonce = self.0;
-        for i in 0..12 {
-            nonce[i] = nonce[i].wrapping_add(1);
-            if nonce[i] != 0 { break; }
+        for byte in &mut nonce {
+            *byte = byte.wrapping_add(1);
+            if *byte != 0 { break; }
         }
         AeadNonce(nonce)
     }

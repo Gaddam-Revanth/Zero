@@ -55,4 +55,9 @@ impl SkippedKeyCache {
     pub fn len(&self) -> usize {
         self.cache.len()
     }
+
+    /// Returns true if the cache is empty.
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
 }
