@@ -1,13 +1,13 @@
-use std::time::Instant;
-use tokio::net::{TcpListener, TcpStream};
-use tokio_rustls::{TlsConnector, TlsAcceptor};
 use rustls::{ClientConfig, RootCertStore, ServerConfig};
 use std::sync::{Arc, Once};
+use std::time::Instant;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use zero_identity::keypair::ZeroKeypair;
-use zero_identity::bundle::OwnedKeyBundle;
-use zero_identity::zeroid::ZeroId;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_rustls::{TlsAcceptor, TlsConnector};
 use zero_handshake::x3dh::{X3dhInitiator, X3dhResponder};
+use zero_identity::bundle::OwnedKeyBundle;
+use zero_identity::keypair::ZeroKeypair;
+use zero_identity::zeroid::ZeroId;
 
 fn ensure_rustls_provider() {
     static ONCE: Once = Once::new();
@@ -20,13 +20,13 @@ fn ensure_rustls_provider() {
 async fn benchmark_handshake_efficiency() {
     ensure_rustls_provider();
     println!("\n=== Handshake Efficiency Benchmark ===");
-    
+
     let tls_time = benchmark_tls_handshake().await;
     println!("Standard TLS 1.3 Handshake: {:?}", tls_time);
 
     let zkx_time = benchmark_zkx_handshake().await;
     println!("ZERO ZKX (PQ-Hybrid) Handshake: {:?}", zkx_time);
-    
+
     let overhead = (zkx_time.as_micros() as f64 / tls_time.as_micros() as f64 - 1.0) * 100.0;
     println!("ZKX Time Overhead vs TLS: {:.2}%", overhead);
 }
@@ -40,9 +40,9 @@ async fn benchmark_tls_handshake() -> std::time::Duration {
     let priv_key = cert.key_pair.serialize_der();
 
     let cert_chain = vec![rustls::pki_types::CertificateDer::from(cert_der.clone())];
-    let key = rustls::pki_types::PrivateKeyDer::Pkcs8(
-        rustls::pki_types::PrivatePkcs8KeyDer::from(priv_key),
-    );
+    let key = rustls::pki_types::PrivateKeyDer::Pkcs8(rustls::pki_types::PrivatePkcs8KeyDer::from(
+        priv_key,
+    ));
 
     let server_config = ServerConfig::builder()
         .with_no_client_auth()
@@ -57,7 +57,9 @@ async fn benchmark_tls_handshake() -> std::time::Duration {
     });
 
     let mut root_store = RootCertStore::empty();
-    root_store.add(rustls::pki_types::CertificateDer::from(cert_der)).unwrap();
+    root_store
+        .add(rustls::pki_types::CertificateDer::from(cert_der))
+        .unwrap();
     let client_config = ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
@@ -66,7 +68,8 @@ async fn benchmark_tls_handshake() -> std::time::Duration {
     let start = Instant::now();
     let stream = TcpStream::connect(addr).await.unwrap();
     let server_name = rustls::pki_types::ServerName::try_from("localhost").unwrap();
-    let mut _tls: tokio_rustls::client::TlsStream<TcpStream> = connector.connect(server_name, stream).await.unwrap();
+    let mut _tls: tokio_rustls::client::TlsStream<TcpStream> =
+        connector.connect(server_name, stream).await.unwrap();
     start.elapsed()
 }
 
@@ -78,7 +81,7 @@ async fn benchmark_zkx_handshake() -> std::time::Duration {
     let bob_bundle = bob_owned.public_bundle(&bob_id);
 
     println!("  --- Handshake Profiling ---");
-    
+
     // 1. X3DH Timing
     let start_x3dh = Instant::now();
     let initiator = X3dhInitiator::new(zero_crypto::dh::X25519Keypair::generate());
@@ -90,8 +93,9 @@ async fn benchmark_zkx_handshake() -> std::time::Duration {
     println!("  Initiator (3 DH + KEM Encaps): {:?}", x3dh_init_time);
 
     let start_x3dh_resp = Instant::now();
-    let _resp_output = X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(h_noise))
-        .expect("ZKX Responder failed");
+    let _resp_output =
+        X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(h_noise))
+            .expect("ZKX Responder failed");
     let x3dh_resp_time = start_x3dh_resp.elapsed();
     println!("  Responder (3 DH + KEM Decaps): {:?}", x3dh_resp_time);
 
@@ -122,24 +126,40 @@ async fn benchmark_zkx_handshake() -> std::time::Duration {
 #[tokio::test]
 async fn benchmark_messaging_overhead() {
     println!("\n=== Messaging Overhead Benchmark ===");
-    
+
     let sizes = [1024, 10240, 1024 * 1024];
-    
+
     for size in sizes {
         let data = vec![0u8; size];
         println!("Size: {} bytes", size);
-        
+
         let zr_overhead = measure_zr_overhead(&data);
-        println!("  ZERO ZR Overhead: {} bytes ({:.2}%)", zr_overhead, (zr_overhead as f64 / size as f64) * 100.0);
+        println!(
+            "  ZERO ZR Overhead: {} bytes ({:.2}%)",
+            zr_overhead,
+            (zr_overhead as f64 / size as f64) * 100.0
+        );
         if size == 1024 {
-            assert!(zr_overhead <= 120, "Overhead is too high: {} bytes", zr_overhead);
+            assert!(
+                zr_overhead <= 120,
+                "Overhead is too high: {} bytes",
+                zr_overhead
+            );
         }
 
-        let tls_overhead = 16 + 5; 
-        println!("  TLS 1.3 (est) Overhead: {} bytes ({:.2}%)", tls_overhead, (tls_overhead as f64 / size as f64) * 100.0);
+        let tls_overhead = 16 + 5;
+        println!(
+            "  TLS 1.3 (est) Overhead: {} bytes ({:.2}%)",
+            tls_overhead,
+            (tls_overhead as f64 / size as f64) * 100.0
+        );
 
         let tox_overhead = 40 + 24; // 40-byte net_crypto header + 24-byte MAC
-        println!("  Tox (est) Overhead:     {} bytes ({:.2}%)", tox_overhead, (tox_overhead as f64 / size as f64) * 100.0);
+        println!(
+            "  Tox (est) Overhead:     {} bytes ({:.2}%)",
+            tox_overhead,
+            (tox_overhead as f64 / size as f64) * 100.0
+        );
         println!();
     }
 }
@@ -148,7 +168,7 @@ async fn benchmark_messaging_overhead() {
 async fn benchmark_ping_pong_latency() {
     ensure_rustls_provider();
     println!("\n=== Ping-Pong Latency Benchmark ===");
-    
+
     let tls_latency = measure_tls_latency().await;
     println!("Standard TLS 1.3 Latency (RTT): {:?}", tls_latency);
 
@@ -165,9 +185,9 @@ async fn measure_tls_latency() -> std::time::Duration {
     let priv_key = cert.key_pair.serialize_der();
 
     let cert_chain = vec![rustls::pki_types::CertificateDer::from(cert_der.clone())];
-    let key = rustls::pki_types::PrivateKeyDer::Pkcs8(
-        rustls::pki_types::PrivatePkcs8KeyDer::from(priv_key),
-    );
+    let key = rustls::pki_types::PrivateKeyDer::Pkcs8(rustls::pki_types::PrivatePkcs8KeyDer::from(
+        priv_key,
+    ));
 
     let server_config = ServerConfig::builder()
         .with_no_client_auth()
@@ -184,7 +204,9 @@ async fn measure_tls_latency() -> std::time::Duration {
     });
 
     let mut root_store = RootCertStore::empty();
-    root_store.add(rustls::pki_types::CertificateDer::from(cert_der)).unwrap();
+    root_store
+        .add(rustls::pki_types::CertificateDer::from(cert_der))
+        .unwrap();
     let client_config = ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
@@ -192,14 +214,14 @@ async fn measure_tls_latency() -> std::time::Duration {
 
     let stream = TcpStream::connect(addr).await.unwrap();
     let server_name = rustls::pki_types::ServerName::try_from("localhost").unwrap();
-    let mut tls: tokio_rustls::client::TlsStream<TcpStream> = connector.connect(server_name, stream).await.unwrap();
+    let mut tls: tokio_rustls::client::TlsStream<TcpStream> =
+        connector.connect(server_name, stream).await.unwrap();
 
     let start = Instant::now();
     tls.write_all(b"ping").await.unwrap();
     let mut buf = [0u8; 4];
     tls.read_exact(&mut buf[..]).await.unwrap();
-    
-    
+
     start.elapsed()
 }
 
@@ -215,12 +237,11 @@ async fn measure_zr_latency() -> std::time::Duration {
     });
 
     let mut stream = TcpStream::connect(addr).await.unwrap();
-    
+
     let start = Instant::now();
     stream.write_all(b"ping").await.unwrap();
     let mut buf = [0u8; 4];
     stream.read_exact(&mut buf[..]).await.unwrap();
-    
 
     start.elapsed()
 }
@@ -234,10 +255,11 @@ fn measure_zr_overhead(data: &[u8]) -> usize {
         is_initiator: true,
         local_dh: dh,
         remote_dh_pub: remote_dh.public_key(),
-    }).expect("ZR session init failed");
+    })
+    .expect("ZR session init failed");
 
     let msg = session.encrypt(data, b"").expect("ZR encrypt failed");
     let encoded = zero_crypto::cbor::to_vec(&msg).expect("CBOR encode failed");
-    
+
     encoded.len() - data.len()
 }

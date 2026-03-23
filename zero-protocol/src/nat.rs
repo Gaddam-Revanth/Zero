@@ -8,9 +8,9 @@
 //! 4. **Hole-Punching** — Simultaneous UDP open with sequential port guessing for symmetric NATs
 #![allow(missing_docs)]
 
+use crate::error::ZeroError;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use crate::error::ZeroError;
 use tracing::info;
 
 // ─── STUN ────────────────────────────────────────────────────────────────────
@@ -34,13 +34,15 @@ pub fn stun_discover_public_addr() -> Result<StunAddress, ZeroError> {
     use std::net::UdpSocket;
     use std::time::Duration;
 
-    let socket = UdpSocket::bind("0.0.0.0:0")
-        .map_err(|e| ZeroError::Custom(format!("STUN bind: {}", e)))?;
-    socket.set_read_timeout(Some(Duration::from_secs(5)))
+    let socket =
+        UdpSocket::bind("0.0.0.0:0").map_err(|e| ZeroError::Custom(format!("STUN bind: {}", e)))?;
+    socket
+        .set_read_timeout(Some(Duration::from_secs(5)))
         .map_err(|e| ZeroError::Custom(format!("STUN timeout: {}", e)))?;
 
     let stun_server = "stun.l.google.com:19302";
-    socket.connect(stun_server)
+    socket
+        .connect(stun_server)
         .map_err(|e| ZeroError::Custom(format!("STUN connect: {}", e)))?;
 
     // Build a minimal STUN Binding Request (RFC 5389 §6)
@@ -55,30 +57,34 @@ pub fn stun_discover_public_addr() -> Result<StunAddress, ZeroError> {
     let nonce = zero_crypto::aead::AeadNonce::random();
     msg[8..20].copy_from_slice(&nonce.0);
 
-    socket.send(&msg)
+    socket
+        .send(&msg)
         .map_err(|e| ZeroError::Custom(format!("STUN send: {}", e)))?;
 
     let mut resp = [0u8; 512];
-    let n = socket.recv(&mut resp)
+    let n = socket
+        .recv(&mut resp)
         .map_err(|e| ZeroError::Custom(format!("STUN recv: {}", e)))?;
 
     // Parse the STUN Binding Response — look for XOR-MAPPED-ADDRESS attribute (0x0020)
-    if n < 20 { return Err(ZeroError::Custom("STUN response too short".to_string())); }
+    if n < 20 {
+        return Err(ZeroError::Custom("STUN response too short".to_string()));
+    }
 
     let mut i = 20;
     while i + 4 <= n {
-        let attr_type = u16::from_be_bytes([resp[i], resp[i+1]]);
-        let attr_len  = u16::from_be_bytes([resp[i+2], resp[i+3]]) as usize;
+        let attr_type = u16::from_be_bytes([resp[i], resp[i + 1]]);
+        let attr_len = u16::from_be_bytes([resp[i + 2], resp[i + 3]]) as usize;
         if attr_type == 0x0020 && i + 4 + attr_len <= n {
             // XOR-MAPPED-ADDRESS: family[1] + padding[1] + port[2] + addr[4 or 16]
             let family = resp[i + 5];
-            let port = u16::from_be_bytes([resp[i+6], resp[i+7]]) ^ 0x2112;
+            let port = u16::from_be_bytes([resp[i + 6], resp[i + 7]]) ^ 0x2112;
             if family == 0x01 && attr_len >= 8 {
                 // IPv4
-                let a = resp[i+8]  ^ 0x21;
-                let b = resp[i+9]  ^ 0x12;
-                let c = resp[i+10] ^ 0xA4;
-                let d = resp[i+11] ^ 0x42;
+                let a = resp[i + 8] ^ 0x21;
+                let b = resp[i + 9] ^ 0x12;
+                let c = resp[i + 10] ^ 0xA4;
+                let d = resp[i + 11] ^ 0x42;
                 let addr: SocketAddr = format!("{}.{}.{}.{}:{}", a, b, c, d, port)
                     .parse()
                     .map_err(|e: std::net::AddrParseError| ZeroError::Custom(e.to_string()))?;
@@ -88,9 +94,13 @@ pub fn stun_discover_public_addr() -> Result<StunAddress, ZeroError> {
         }
         i += 4 + attr_len;
         // Attributes are padded to 4-byte boundaries
-        if !attr_len.is_multiple_of(4) { i += 4 - (attr_len % 4); }
+        if !attr_len.is_multiple_of(4) {
+            i += 4 - (attr_len % 4);
+        }
     }
-    Err(ZeroError::Custom("STUN: no XOR-MAPPED-ADDRESS in response".to_string()))
+    Err(ZeroError::Custom(
+        "STUN: no XOR-MAPPED-ADDRESS in response".to_string(),
+    ))
 }
 
 // ─── ICE + SDP ───────────────────────────────────────────────────────────────
@@ -150,7 +160,9 @@ pub struct NatManager;
 
 impl NatManager {
     /// Create a new NAT manager.
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// Discover our public IP:port by sending a STUN Binding Request (§8.3).
     /// Returns the `StunAddress` for use in ICE candidate gathering.
@@ -197,7 +209,7 @@ impl NatManager {
             to_id: target_id.to_string(),
             candidates: local_candidates,
         };
-        
+
         zero_crypto::cbor::to_vec(&exchange)
             .map_err(|e| ZeroError::Custom(format!("CBOR encode IceExchange: {}", e)))
     }
@@ -214,16 +226,20 @@ impl NatManager {
         if let Some(cand) = remote_candidates.into_iter().next() {
             let socket = UdpSocket::bind("0.0.0.0:0")
                 .map_err(|e| ZeroError::Custom(format!("Hole-punch bind: {}", e)))?;
-            socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
-            
+            socket
+                .set_read_timeout(Some(Duration::from_millis(500)))
+                .ok();
+
             // Try the observed public port
             let _ = socket.send_to(b"ZERO-HOLE-PUNCH", cand.public_addr);
-            
+
             // If symmetric NAT, attempt port guessing (±10)
             if matches!(cand.nat_type, NatType::Symmetric) {
                 let base_port = cand.public_addr.port();
                 for offset in -10..=10 {
-                    if offset == 0 { continue; }
+                    if offset == 0 {
+                        continue;
+                    }
                     let guessed_port = (base_port as i32 + offset) as u16;
                     let mut guessed_addr = cand.public_addr;
                     guessed_addr.set_port(guessed_port);
@@ -231,11 +247,11 @@ impl NatManager {
                 }
             }
 
-            // In a real flow, we'd await a response here. 
+            // In a real flow, we'd await a response here.
             // For now, we return the first candidate's public address as the presumed target.
             return Ok(cand.public_addr);
         }
-        
+
         Err(ZeroError::Custom("No candidates to hole-punch".to_string()))
     }
 
@@ -249,7 +265,12 @@ impl NatManager {
         local_sdp: &str,
         sdp_type: &str,
     ) -> Result<Vec<u8>, ZeroError> {
-        info!("Creating SDP relay packet {} → {} ({}B)", sdp_type, target_id, local_sdp.len());
+        info!(
+            "Creating SDP relay packet {} → {} ({}B)",
+            sdp_type,
+            target_id,
+            local_sdp.len()
+        );
 
         let relay_msg = SdpRelay {
             from_id: self_id.to_string(),
@@ -257,12 +278,14 @@ impl NatManager {
             sdp_type: sdp_type.to_string(),
             sdp: local_sdp.to_string(),
         };
-        
+
         zero_crypto::cbor::to_vec(&relay_msg)
             .map_err(|e| ZeroError::Custom(format!("CBOR encode SdpRelay: {}", e)))
     }
 }
 
 impl Default for NatManager {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

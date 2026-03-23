@@ -1,18 +1,22 @@
+use bytes::Bytes;
 use zero_protocol::api::ZeroNode;
 use zero_wire::{Packet, PacketHeader, PacketType, Version};
-use bytes::Bytes;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn protocol_fuzzing_v1() {
     let tmp_dir = std::env::temp_dir();
-    let node = ZeroNode::new(tmp_dir.join("fuzz_node").to_str().unwrap().to_string(), "pass123".to_string()).unwrap();
+    let node = ZeroNode::new(
+        tmp_dir.join("fuzz_node").to_str().unwrap().to_string(),
+        "pass123".to_string(),
+    )
+    .unwrap();
     let node_id = zero_dht::node_id_from_isk(&node.self_id.isk_pub());
 
     // --- 1. Invalid Magic Bytes ---
-    // The PacketHeader parser (decode_v1) checks magic. 
+    // The PacketHeader parser (decode_v1) checks magic.
     // We'll simulate a raw buffer with bad magic and see if decode fails.
     let mut bad_magic = [0u8; 32];
-    bad_magic[0..4].copy_from_slice(b"BADD"); 
+    bad_magic[0..4].copy_from_slice(b"BADD");
     let res = zero_wire::header::PacketHeader::decode_v1(&bad_magic);
     assert!(res.is_err(), "Should fail on bad magic");
 
@@ -71,10 +75,10 @@ async fn protocol_fuzzing_v1() {
 
     // First send: should be accepted (or at least pass replay check)
     let _ = node.dispatch_incoming_packet(packet_replay.clone()).await;
-    
+
     // Second send: should be rejected as replay
     let res2 = node.dispatch_incoming_packet(packet_replay).await;
-    // Note: dispatch might return Ok(()) if it just logs the replay, 
+    // Note: dispatch might return Ok(()) if it just logs the replay,
     // but in v1.0 logic it should return an error or be explicitly caught by tests.
     // For now, let's verify if our dispatcher logic handles it.
     println!("Replay test result: {:?}", res2);

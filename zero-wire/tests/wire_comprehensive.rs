@@ -3,25 +3,22 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod wire_tests {
+    use bytes::Bytes;
     use zero_wire::{
-        header::{PacketHeader, Packet, HEADER_LEN_V1},
+        header::{Packet, PacketHeader, HEADER_LEN_V1},
         replay::{ReplayCache, ReplayToken},
         types::{PacketFlags, PacketType, Version},
     };
-    use bytes::Bytes;
 
-    fn v1() -> Version { Version { major: 1, minor: 0 } }
+    fn v1() -> Version {
+        Version { major: 1, minor: 0 }
+    }
 
     // ── PacketHeader tests ─────────────────────────────────────────────────────
 
     #[test]
     fn test_header_encode_decode_roundtrip() {
-        let hdr = PacketHeader::new(
-            v1(),
-            PacketType::ZkxInit,
-            PacketFlags(0),
-            512,
-        );
+        let hdr = PacketHeader::new(v1(), PacketType::ZkxInit, PacketFlags(0), 512);
         let encoded = hdr.encode_v1();
         let decoded = PacketHeader::decode_v1(&encoded).unwrap();
         assert_eq!(hdr, decoded);
@@ -34,19 +31,28 @@ mod wire_tests {
         bytes[1] = b'X';
         bytes[2] = b'X';
         bytes[3] = b'X';
-        assert!(PacketHeader::decode_v1(&bytes).is_err(), "Invalid magic must fail");
+        assert!(
+            PacketHeader::decode_v1(&bytes).is_err(),
+            "Invalid magic must fail"
+        );
     }
 
     #[test]
     fn test_header_unsupported_version_fails() {
         let hdr = PacketHeader::new(
-            Version { major: 99, minor: 0 }, // unsupported
+            Version {
+                major: 99,
+                minor: 0,
+            }, // unsupported
             PacketType::ZkxInit,
             PacketFlags(0),
             0,
         );
         let encoded = hdr.encode_v1();
-        assert!(PacketHeader::decode_v1(&encoded).is_err(), "Version 99 must fail");
+        assert!(
+            PacketHeader::decode_v1(&encoded).is_err(),
+            "Version 99 must fail"
+        );
     }
 
     #[test]
@@ -58,13 +64,19 @@ mod wire_tests {
             PacketFlags(0xFF00), // reserved bits
             0,
         );
-        assert!(hdr.validate_v1().is_err(), "Reserved bits in flags must fail validation");
+        assert!(
+            hdr.validate_v1().is_err(),
+            "Reserved bits in flags must fail validation"
+        );
     }
 
     #[test]
     fn test_header_truncated_fails() {
         let bytes = vec![0u8; 10]; // less than HEADER_LEN_V1
-        assert!(PacketHeader::decode_v1(&bytes).is_err(), "Truncated header must fail");
+        assert!(
+            PacketHeader::decode_v1(&bytes).is_err(),
+            "Truncated header must fail"
+        );
     }
 
     // ── Packet framing tests ───────────────────────────────────────────────────
@@ -110,7 +122,10 @@ mod wire_tests {
         };
         let encoded = packet.encode_v1().unwrap();
         let truncated = &encoded[..encoded.len() - 2]; // cut off last 2 bytes
-        assert!(Packet::decode_v1(truncated).is_err(), "Truncated packet must fail");
+        assert!(
+            Packet::decode_v1(truncated).is_err(),
+            "Truncated packet must fail"
+        );
     }
 
     // ── ReplayCache tests ──────────────────────────────────────────────────────
@@ -146,7 +161,7 @@ mod wire_tests {
         let tok = ReplayToken::random(); // same token
         let recv_a = [0u8; 32];
         let recv_b = [1u8; 32]; // different receiver
-        // Both should be accepted independently
+                                // Both should be accepted independently
         assert!(cache.check_and_insert(1000, &recv_a, PacketType::ZkxInit, &tok));
         assert!(
             cache.check_and_insert(1000, &recv_b, PacketType::ZkxInit, &tok),

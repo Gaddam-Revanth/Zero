@@ -11,7 +11,7 @@ use crate::{
     error::IdentityError,
     keypair::ZeroKeypair,
 };
-use serde::{Deserialize, Serialize, Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zero_crypto::hash::blake2b_256;
 
 /// Expected maximum encoded ZERO ID string length.
@@ -134,8 +134,7 @@ impl ZeroId {
 
     /// Decode a ZERO ID from a Base58Check string.
     pub fn from_string(s: &str) -> Result<Self, IdentityError> {
-        let raw = base58_decode(s)
-            .map_err(|e| IdentityError::InvalidEncoding(e.to_string()))?;
+        let raw = base58_decode(s).map_err(|e| IdentityError::InvalidEncoding(e.to_string()))?;
         if raw.len() != RAW_SIZE {
             return Err(IdentityError::InvalidEncoding(format!(
                 "Expected {} bytes, got {}",
@@ -162,7 +161,13 @@ impl ZeroId {
         nospam.copy_from_slice(&self.raw[NOSPAM_OFFSET..CHECKSUM_OFFSET]);
         let mut checksum = [0u8; 2];
         checksum.copy_from_slice(&self.raw[CHECKSUM_OFFSET..RAW_SIZE]);
-        ZeroIdComponents { isk_pub, idk_pub, pq_hash, nospam, checksum }
+        ZeroIdComponents {
+            isk_pub,
+            idk_pub,
+            pq_hash,
+            nospam,
+            checksum,
+        }
     }
 
     /// Return the ISK public key bytes — the canonical peer identifier.

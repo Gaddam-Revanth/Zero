@@ -26,7 +26,9 @@ impl RoutingTable {
 
     /// Add or refresh a node.
     pub fn add_node(&mut self, node: NodeInfo) {
-        if node.node_id == self.own_id { return; }
+        if node.node_id == self.own_id {
+            return;
+        }
         let idx = self.bucket_index(&node.node_id);
         self.buckets[idx].add_node(node);
     }
@@ -56,7 +58,10 @@ impl RoutingTable {
     /// Lookup a specific node by ID.
     pub fn find_node(&self, node_id: &NodeId) -> Option<&NodeInfo> {
         let idx = self.bucket_index(node_id);
-        self.buckets[idx].nodes().iter().find(|n| &n.node_id == node_id)
+        self.buckets[idx]
+            .nodes()
+            .iter()
+            .find(|n| &n.node_id == node_id)
     }
 
     /// Total number of known nodes.
@@ -81,7 +86,7 @@ impl RoutingTable {
 
         let ephemeral = zero_crypto::dh::X25519Keypair::generate();
         let eph_pub = ephemeral.public_key();
-        
+
         // Derive real AeadKeys via DH with each hop's ISK (acting as their stable onion key)
         let keys = [
             self.derive_hop_key(&ephemeral, &zero_crypto::dh::X25519PublicKey(h1.isk_pub))?,
@@ -90,7 +95,14 @@ impl RoutingTable {
         ];
 
         let hops = [h1.node_id, h2.node_id, h3.node_id];
-        let payload = format!("FIND_NODE:{}", target.0.iter().map(|b| format!("{:02x}", b)).collect::<String>());
+        let payload = format!(
+            "FIND_NODE:{}",
+            target
+                .0
+                .iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<String>()
+        );
         crate::onion::OnionPacket::wrap_3_hops(payload.as_bytes(), &hops, &keys, eph_pub.0)
     }
 
@@ -106,12 +118,21 @@ impl RoutingTable {
         }
         255 // Same ID — shouldn't happen (self filtered above)
     }
-    
-    fn derive_hop_key(&self, our_ephemeral: &zero_crypto::dh::X25519Keypair, their_pub: &zero_crypto::dh::X25519PublicKey) -> Result<zero_crypto::aead::AeadKey, crate::DhtError> {
+
+    fn derive_hop_key(
+        &self,
+        our_ephemeral: &zero_crypto::dh::X25519Keypair,
+        their_pub: &zero_crypto::dh::X25519PublicKey,
+    ) -> Result<zero_crypto::aead::AeadKey, crate::DhtError> {
         let shared = our_ephemeral.diffie_hellman(their_pub);
         // Use HKDF to derive a dedicated onion routing key
-        let key_bytes = zero_crypto::kdf::hkdf(b"salt", &shared.0, zero_crypto::kdf::KdfContext::OnionHopKey, 32)
-            .map_err(|e| crate::DhtError::CryptoError(e.to_string()))?;
+        let key_bytes = zero_crypto::kdf::hkdf(
+            b"salt",
+            &shared.0,
+            zero_crypto::kdf::KdfContext::OnionHopKey,
+            32,
+        )
+        .map_err(|e| crate::DhtError::CryptoError(e.to_string()))?;
         let mut arr = [0u8; 32];
         arr.copy_from_slice(&key_bytes);
         Ok(zero_crypto::aead::AeadKey(arr))

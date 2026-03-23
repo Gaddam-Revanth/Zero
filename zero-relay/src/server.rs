@@ -1,9 +1,9 @@
 //! Relay server daemon.
 
+use crate::error::RelayError;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use crate::error::RelayError;
 
 /// Relay Server Configuration.
 #[derive(Clone, Debug)]
@@ -39,7 +39,9 @@ impl RelayServer {
     pub async fn route(&self, dest: &[u8; 32], payload: Vec<u8>) -> Result<(), RelayError> {
         let mut routes = self.routes.lock().await;
         if let Some(tx) = routes.get_mut(dest) {
-            tx.send(payload).await.map_err(|_| RelayError::RouteNotFound)?;
+            tx.send(payload)
+                .await
+                .map_err(|_| RelayError::RouteNotFound)?;
             Ok(())
         } else {
             Err(RelayError::RouteNotFound)

@@ -7,12 +7,12 @@
 //! - Multiple streams (avoid head-of-line blocking)
 
 use crate::error::TransportError;
+use bytes::Bytes;
 use quinn::{Connection, Endpoint};
 use std::net::SocketAddr;
-use zero_wire::{Packet, PacketHeader};
-use bytes::Bytes;
 use std::sync::Arc;
 use std::sync::Once;
+use zero_wire::{Packet, PacketHeader};
 
 fn ensure_rustls_provider() {
     static ONCE: Once = Once::new();
@@ -71,18 +71,23 @@ impl QuicTransport {
             .expect("unique transport config")
             .max_concurrent_bidi_streams(16_u32.into());
 
-        let endpoint = Endpoint::server(server_config, addr)
-            .map_err(TransportError::Io)?;
+        let endpoint = Endpoint::server(server_config, addr).map_err(TransportError::Io)?;
         Ok((Self { endpoint }, cert_der))
     }
 
     /// Bind a QUIC client endpoint that trusts the provided server certificate DER.
-    pub fn bind_client_trusting(addr: SocketAddr, server_cert_der: &[u8]) -> Result<Self, TransportError> {
+    pub fn bind_client_trusting(
+        addr: SocketAddr,
+        server_cert_der: &[u8],
+    ) -> Result<Self, TransportError> {
         ensure_rustls_provider();
         let mut endpoint = Endpoint::client(addr).map_err(TransportError::Io)?;
 
         let mut roots = rustls::RootCertStore::empty();
-        roots.add(rustls::pki_types::CertificateDer::from(server_cert_der.to_vec()))
+        roots
+            .add(rustls::pki_types::CertificateDer::from(
+                server_cert_der.to_vec(),
+            ))
             .map_err(|e| TransportError::TlsError(e.to_string()))?;
 
         let client_crypto = rustls::ClientConfig::builder()
@@ -113,9 +118,13 @@ impl QuicTransport {
 
     /// Accept the next incoming QUIC connection.
     pub async fn accept(&self) -> Result<Connection, TransportError> {
-        let incoming = self.endpoint.accept().await
+        let incoming = self
+            .endpoint
+            .accept()
+            .await
             .ok_or_else(|| TransportError::ConnectionFailed("endpoint closed".into()))?;
-        let conn = incoming.await
+        let conn = incoming
+            .await
             .map_err(|e| TransportError::ConnectionFailed(e.to_string()))?;
         Ok(conn)
     }
@@ -125,7 +134,9 @@ impl QuicTransport {
         send: &mut quinn::SendStream,
         pkt: &Packet,
     ) -> Result<(), TransportError> {
-        let bytes = pkt.encode_v1().map_err(|e| TransportError::StreamError(e.to_string()))?;
+        let bytes = pkt
+            .encode_v1()
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
         send.write_all(&bytes)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
@@ -133,33 +144,31 @@ impl QuicTransport {
     }
 
     /// Receive a single framed ZERO packet from an incoming receive stream.
-    pub async fn recv_packet(
-        recv: &mut quinn::RecvStream,
-    ) -> Result<Packet, TransportError> {
+    pub async fn recv_packet(recv: &mut quinn::RecvStream) -> Result<Packet, TransportError> {
         let mut head_bytes = [0u8; zero_wire::header::HEADER_LEN_V1 as usize];
         recv.read_exact(&mut head_bytes)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-            
+
         let header = PacketHeader::decode_v1(&head_bytes)
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-            
+
         let mut sender_node_id = [0u8; 32];
         recv.read_exact(&mut sender_node_id)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-            
+
         let mut receiver_node_id = [0u8; 32];
         recv.read_exact(&mut receiver_node_id)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-            
+
         let mut body = vec![0u8; header.body_len as usize];
         recv.read_exact(&mut body)
             .await
             .map_err(|e| TransportError::StreamError(e.to_string()))?;
-            
-        Ok(Packet { 
+
+        Ok(Packet {
             header,
             sender_node_id,
             receiver_node_id,

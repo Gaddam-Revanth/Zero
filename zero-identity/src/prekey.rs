@@ -4,7 +4,7 @@ use crate::error::IdentityError;
 use serde::{Deserialize, Serialize};
 use zero_crypto::{
     dh::{X25519Keypair, X25519PublicKey, X25519SecretKey},
-    sign::{Ed25519Keypair, Ed25519PublicKey, Ed25519Signature, ed25519_verify},
+    sign::{ed25519_verify, Ed25519Keypair, Ed25519PublicKey, Ed25519Signature},
 };
 use zeroize::{Zeroize, ZeroizeOnDrop};
 

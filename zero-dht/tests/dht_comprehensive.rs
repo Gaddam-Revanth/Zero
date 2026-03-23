@@ -3,9 +3,9 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod onion_tests {
-    use zero_dht::onion::{OnionPacket};
-    use zero_dht::NodeId;
     use zero_crypto::aead::{AeadKey, AEAD_KEY_SIZE};
+    use zero_dht::onion::OnionPacket;
+    use zero_dht::NodeId;
 
     fn rand_key() -> AeadKey {
         use rand::RngCore;
@@ -27,7 +27,11 @@ mod onion_tests {
         let hop2_key = rand_key();
         let hop3_key = rand_key();
 
-        let hops = [NodeId(rand_node_id()), NodeId(rand_node_id()), NodeId(rand_node_id())];
+        let hops = [
+            NodeId(rand_node_id()),
+            NodeId(rand_node_id()),
+            NodeId(rand_node_id()),
+        ];
         let keys = [hop1_key, hop2_key, hop3_key];
         let eph_pub = rand_node_id();
 
@@ -36,7 +40,10 @@ mod onion_tests {
 
         // H1 peels outermost layer
         let layer1 = onion.peel(&keys[0]).unwrap();
-        assert_eq!(layer1.next_hop, hops[1], "Layer 1 next hop must point to H2");
+        assert_eq!(
+            layer1.next_hop, hops[1],
+            "Layer 1 next hop must point to H2"
+        );
 
         // H2 peels middle layer
         let packet2 = OnionPacket {
@@ -44,7 +51,10 @@ mod onion_tests {
             encrypted_data: layer1.inner_payload,
         };
         let layer2 = packet2.peel(&keys[1]).unwrap();
-        assert_eq!(layer2.next_hop, hops[2], "Layer 2 next hop must point to H3");
+        assert_eq!(
+            layer2.next_hop, hops[2],
+            "Layer 2 next hop must point to H3"
+        );
 
         // H3 peels innermost layer
         let packet3 = OnionPacket {
@@ -52,7 +62,10 @@ mod onion_tests {
             encrypted_data: layer2.inner_payload,
         };
         let layer3 = packet3.peel(&keys[2]).unwrap();
-        assert_eq!(layer3.inner_payload, payload, "H3 must recover original payload exactly");
+        assert_eq!(
+            layer3.inner_payload, payload,
+            "H3 must recover original payload exactly"
+        );
     }
 
     #[test]
@@ -62,7 +75,11 @@ mod onion_tests {
         let hop3_key = rand_key();
         let wrong_key = rand_key();
 
-        let hops = [NodeId(rand_node_id()), NodeId(rand_node_id()), NodeId(rand_node_id())];
+        let hops = [
+            NodeId(rand_node_id()),
+            NodeId(rand_node_id()),
+            NodeId(rand_node_id()),
+        ];
         let keys = [hop1_key, hop2_key, hop3_key];
 
         let onion = OnionPacket::wrap_3_hops(b"secret", &hops, &keys, rand_node_id()).unwrap();
@@ -74,13 +91,20 @@ mod onion_tests {
         let hop1_key = rand_key();
         let hop2_key = rand_key();
         let hop3_key = rand_key();
-        let hops = [NodeId(rand_node_id()), NodeId(rand_node_id()), NodeId(rand_node_id())];
+        let hops = [
+            NodeId(rand_node_id()),
+            NodeId(rand_node_id()),
+            NodeId(rand_node_id()),
+        ];
         let keys = [hop1_key, hop2_key, hop3_key];
 
         let mut onion = OnionPacket::wrap_3_hops(b"data", &hops, &keys, rand_node_id()).unwrap();
         let last = onion.encrypted_data.len() - 1;
         onion.encrypted_data[last] ^= 0xFF;
-        assert!(onion.peel(&keys[0]).is_err(), "Tampered ciphertext must fail authentication");
+        assert!(
+            onion.peel(&keys[0]).is_err(),
+            "Tampered ciphertext must fail authentication"
+        );
     }
 
     #[test]
@@ -97,11 +121,7 @@ mod onion_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod routing_table_tests {
-    use zero_dht::{
-        routing_table::RoutingTable,
-        kbucket::NodeInfo,
-        NodeId,
-    };
+    use zero_dht::{kbucket::NodeInfo, routing_table::RoutingTable, NodeId};
     use zero_identity::keypair::ZeroKeypair;
 
     fn rand_node_id() -> [u8; 32] {
@@ -133,7 +153,7 @@ mod routing_table_tests {
         let target = NodeId(rand_node_id());
         let closest = rt.closest_nodes(&target, 3);
         for i in 1..closest.len() {
-            let d_prev = xor_dist(&closest[i-1].node_id.0, &target.0);
+            let d_prev = xor_dist(&closest[i - 1].node_id.0, &target.0);
             let d_curr = xor_dist(&closest[i].node_id.0, &target.0);
             assert!(d_prev <= d_curr);
         }

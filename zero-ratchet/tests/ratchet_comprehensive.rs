@@ -5,8 +5,8 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod ratchet_tests {
-    use zero_ratchet::state::{RatchetSession, SessionInit};
     use zero_crypto::dh::X25519Keypair;
+    use zero_ratchet::state::{RatchetSession, SessionInit};
 
     fn make_session_pair() -> (RatchetSession, RatchetSession) {
         let master = vec![0x42u8; 64];
@@ -21,14 +21,16 @@ mod ratchet_tests {
             is_initiator: true,
             local_dh: alice_kp,
             remote_dh_pub: bob_pub,
-        }).expect("alice init");
+        })
+        .expect("alice init");
 
         let bob = RatchetSession::new(SessionInit {
             master_secret: master,
             is_initiator: false,
             local_dh: bob_kp,
             remote_dh_pub: alice_pub,
-        }).expect("bob init");
+        })
+        .expect("bob init");
 
         (alice, bob)
     }
@@ -86,7 +88,10 @@ mod ratchet_tests {
 
         let mut msg = alice.encrypt(b"secret", ad).unwrap();
         msg.ciphertext[15] ^= 0xFF; // flip bits in the ciphertext (skipping the 12-byte nonce)
-        assert!(bob.decrypt(&msg, ad, 0).is_err(), "Tampered ciphertext must fail");
+        assert!(
+            bob.decrypt(&msg, ad, 0).is_err(),
+            "Tampered ciphertext must fail"
+        );
     }
 
     #[test]
@@ -94,7 +99,10 @@ mod ratchet_tests {
         let (mut alice, _bob) = make_session_pair();
         // Snapshot root key implicitly by encrypting then checking pq_ratchet_step doesn't error
         let pq_ss = [0xFFu8; 32];
-        assert!(alice.pq_ratchet_step(&pq_ss).is_ok(), "PQ ratchet step must succeed");
+        assert!(
+            alice.pq_ratchet_step(&pq_ss).is_ok(),
+            "PQ ratchet step must succeed"
+        );
     }
 
     #[test]

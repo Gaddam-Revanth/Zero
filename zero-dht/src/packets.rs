@@ -1,7 +1,7 @@
 //! ZDHT packet types and wire format (CBOR).
 
-use serde::{Deserialize, Serialize};
 use crate::NodeId;
+use serde::{Deserialize, Serialize};
 use zero_crypto::sign::Ed25519Signature;
 
 /// All ZDHT packet types.

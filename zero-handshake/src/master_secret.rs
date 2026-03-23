@@ -24,21 +24,27 @@ impl MasterSecret {
     }
 
     /// R4: Generate a confirmation tag.
-    pub fn generate_tag(&self, label: &str, h_noise: &[u8; 32]) -> Result<[u8; 32], crate::error::HandshakeError> {
-        let confirm_key = self.derive_confirm_key()
+    pub fn generate_tag(
+        &self,
+        label: &str,
+        h_noise: &[u8; 32],
+    ) -> Result<[u8; 32], crate::error::HandshakeError> {
+        let confirm_key = self
+            .derive_confirm_key()
             .map_err(|_| crate::error::HandshakeError::KdfError)?;
-        
+
         // Tag = BLAKE2b-256(confirm_key || label || h_noise)
-        let tag = zero_crypto::hash::blake2b_256_multi(&[
-            &confirm_key,
-            label.as_bytes(),
-            h_noise,
-        ]);
+        let tag = zero_crypto::hash::blake2b_256_multi(&[&confirm_key, label.as_bytes(), h_noise]);
         Ok(tag)
     }
 
     /// R4: Verify a confirmation tag.
-    pub fn verify_tag(&self, label: &str, h_noise: &[u8; 32], expected_tag: &[u8; 32]) -> Result<(), crate::error::HandshakeError> {
+    pub fn verify_tag(
+        &self,
+        label: &str,
+        h_noise: &[u8; 32],
+        expected_tag: &[u8; 32],
+    ) -> Result<(), crate::error::HandshakeError> {
         let actual = self.generate_tag(label, h_noise)?;
         if actual == *expected_tag {
             Ok(())

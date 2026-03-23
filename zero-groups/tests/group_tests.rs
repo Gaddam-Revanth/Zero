@@ -1,6 +1,6 @@
 use zero_groups::group::GroupState;
-use zero_identity::zeroid::ZeroId;
 use zero_identity::keypair::ZeroKeypair;
+use zero_identity::zeroid::ZeroId;
 
 #[test]
 fn test_group_lifecycle() {
@@ -17,14 +17,21 @@ fn test_group_lifecycle() {
     // 2. Sign and verify an event
     let target_kp = ZeroKeypair::generate().unwrap();
     let target_id = ZeroId::from_keypair(&target_kp, [0u8; 4]);
-    let event = group.sign_event("add_member", &target_id, timestamp + 1, b"new_member_payload").expect("sign event");
-    
+    let event = group
+        .sign_event(
+            "add_member",
+            &target_id,
+            timestamp + 1,
+            b"new_member_payload",
+        )
+        .expect("sign event");
+
     group.verify_event(&event).expect("verify event");
 
     // 3. Sender key rotation (ratchet)
     let old_key = group.members.get(&admin_id).unwrap().sender_key;
     let new_key = group.rotate_sender_key(&admin_id).expect("rotate key");
-    
+
     assert_ne!(old_key, new_key);
     assert_eq!(group.members.get(&admin_id).unwrap().sender_key, new_key);
 }
@@ -37,7 +44,7 @@ fn test_group_serialization() {
 
     let mut serialized = Vec::new();
     ciborium::ser::into_writer(&group, &mut serialized).expect("serialize");
-    
+
     let deserialized: GroupState = ciborium::de::from_reader(&serialized[..]).expect("deserialize");
 
     assert_eq!(group.group_id, deserialized.group_id);

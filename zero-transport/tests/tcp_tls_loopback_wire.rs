@@ -1,15 +1,18 @@
 use bytes::Bytes;
-use zero_transport::{TransportError};
 use zero_transport::tcp_tls::TcpTlsTransport;
+use zero_transport::TransportError;
 use zero_wire::{PacketFlags, PacketHeader, PacketType, Version};
 
 #[tokio::test]
 async fn tcp_tls_loopback_sends_and_receives_framed_packet() -> Result<(), TransportError> {
-    let (listener, cert_der, acceptor) = TcpTlsTransport::bind_server("127.0.0.1:0".parse().unwrap()).await?;
+    let (listener, cert_der, acceptor) =
+        TcpTlsTransport::bind_server("127.0.0.1:0".parse().unwrap()).await?;
     let addr = listener.local_addr()?;
 
     let server_task = tokio::spawn(async move {
-        let mut tls = TcpTlsTransport::accept(&listener, &acceptor).await.expect("accept tls");
+        let mut tls = TcpTlsTransport::accept(&listener, &acceptor)
+            .await
+            .expect("accept tls");
         let pkt = TcpTlsTransport::recv_packet(&mut tls).await.expect("recv");
         pkt
     });
@@ -33,4 +36,3 @@ async fn tcp_tls_loopback_sends_and_receives_framed_packet() -> Result<(), Trans
     assert_eq!(pkt.body.as_ref(), b"hello");
     Ok(())
 }
-

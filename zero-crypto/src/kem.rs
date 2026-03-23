@@ -59,13 +59,15 @@ pub struct MlKem768Keypair {
 impl MlKem768Keypair {
     /// Generate a new ML-KEM-768 keypair from OS randomness (FIPS 203 §6.1).
     pub fn generate() -> Result<Self, CryptoError> {
-        use rand::RngCore;
+        use ml_kem::{kem::KeyExport, DecapsulationKey768, Seed};
         use rand::rngs::OsRng;
-        use ml_kem::{DecapsulationKey768, Seed, kem::KeyExport};
+        use rand::RngCore;
 
         // Generate 64-byte seed via rand 0.8 OsRng (avoids rand_core version conflict)
         let mut seed_raw = [0u8; 64];
-        OsRng.try_fill_bytes(&mut seed_raw).map_err(|_| CryptoError::RngFailure)?;
+        OsRng
+            .try_fill_bytes(&mut seed_raw)
+            .map_err(|_| CryptoError::RngFailure)?;
 
         let seed = Seed::from(seed_raw);
         let dk = DecapsulationKey768::from_seed(seed);
@@ -88,23 +90,33 @@ impl MlKem768Keypair {
 pub fn ml_kem_768_encapsulate(
     ek: &MlKem768EncapsKey,
 ) -> Result<(MlKem768Ciphertext, MlKem768SharedSecret), CryptoError> {
-    use rand::RngCore;
-    use rand::rngs::OsRng;
     use ml_kem::{EncapsulationKey768, B32};
+    use rand::rngs::OsRng;
+    use rand::RngCore;
 
     if ek.0.len() != ML_KEM_768_EK_SIZE {
-        return Err(CryptoError::InvalidKeyLength { expected: ML_KEM_768_EK_SIZE, got: ek.0.len() });
+        return Err(CryptoError::InvalidKeyLength {
+            expected: ML_KEM_768_EK_SIZE,
+            got: ek.0.len(),
+        });
     }
 
     // Deserialize encapsulation key
-    let ek_arr: &[u8; ML_KEM_768_EK_SIZE] = ek.0.as_slice().try_into()
-        .map_err(|_| CryptoError::InvalidKeyLength { expected: ML_KEM_768_EK_SIZE, got: ek.0.len() })?;
-    let encaps_key = EncapsulationKey768::new(ek_arr.into())
-        .map_err(|_| CryptoError::KemEncapsulationFailed)?;
+    let ek_arr: &[u8; ML_KEM_768_EK_SIZE] =
+        ek.0.as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKeyLength {
+                expected: ML_KEM_768_EK_SIZE,
+                got: ek.0.len(),
+            })?;
+    let encaps_key =
+        EncapsulationKey768::new(ek_arr.into()).map_err(|_| CryptoError::KemEncapsulationFailed)?;
 
     // Generate a 32-byte random message m for encapsulate_deterministic
     let mut m_raw = [0u8; 32];
-    OsRng.try_fill_bytes(&mut m_raw).map_err(|_| CryptoError::RngFailure)?;
+    OsRng
+        .try_fill_bytes(&mut m_raw)
+        .map_err(|_| CryptoError::RngFailure)?;
     let m = B32::from(m_raw);
 
     // encapsulate_deterministic is the only way to call without rand_core 0.10
@@ -123,24 +135,44 @@ pub fn ml_kem_768_decapsulate(
     dk: &MlKem768DecapsKey,
     ct: &MlKem768Ciphertext,
 ) -> Result<MlKem768SharedSecret, CryptoError> {
-    use ml_kem::{DecapsulationKey768, Seed, ml_kem_768::Ciphertext, kem::{Decapsulate, KeyInit}};
+    use ml_kem::{
+        kem::{Decapsulate, KeyInit},
+        ml_kem_768::Ciphertext,
+        DecapsulationKey768, Seed,
+    };
 
     if dk.0.len() != ML_KEM_768_DK_SIZE {
-        return Err(CryptoError::InvalidKeyLength { expected: ML_KEM_768_DK_SIZE, got: dk.0.len() });
+        return Err(CryptoError::InvalidKeyLength {
+            expected: ML_KEM_768_DK_SIZE,
+            got: dk.0.len(),
+        });
     }
     if ct.0.len() != ML_KEM_768_CT_SIZE {
-        return Err(CryptoError::InvalidKeyLength { expected: ML_KEM_768_CT_SIZE, got: ct.0.len() });
+        return Err(CryptoError::InvalidKeyLength {
+            expected: ML_KEM_768_CT_SIZE,
+            got: ct.0.len(),
+        });
     }
 
     // Reconstruct decapsulation key from its seed
-    let seed_arr: &[u8; ML_KEM_768_DK_SIZE] = dk.0.as_slice().try_into()
-        .map_err(|_| CryptoError::InvalidKeyLength { expected: ML_KEM_768_DK_SIZE, got: dk.0.len() })?;
+    let seed_arr: &[u8; ML_KEM_768_DK_SIZE] =
+        dk.0.as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKeyLength {
+                expected: ML_KEM_768_DK_SIZE,
+                got: dk.0.len(),
+            })?;
     let seed = Seed::from(*seed_arr);
     let decaps_key = DecapsulationKey768::new(&seed);
 
     // Reconstruct ciphertext
-    let ct_arr: &[u8; ML_KEM_768_CT_SIZE] = ct.0.as_slice().try_into()
-        .map_err(|_| CryptoError::InvalidKeyLength { expected: ML_KEM_768_CT_SIZE, got: ct.0.len() })?;
+    let ct_arr: &[u8; ML_KEM_768_CT_SIZE] =
+        ct.0.as_slice()
+            .try_into()
+            .map_err(|_| CryptoError::InvalidKeyLength {
+                expected: ML_KEM_768_CT_SIZE,
+                got: ct.0.len(),
+            })?;
     let ciphertext = Ciphertext::from(*ct_arr);
 
     // Infallible: FIPS 203 implicit rejection returns pseudorandom key on tampering
@@ -179,6 +211,9 @@ mod tests {
         let (ct, ss1) = ml_kem_768_encapsulate(&kp1.ek).unwrap();
         // Decapsulate with the wrong key — implicit rejection returns a *different* pseudorandom key
         let ss2 = ml_kem_768_decapsulate(&kp2.dk, &ct).unwrap();
-        assert_ne!(ss1.0, ss2.0, "Different keys must produce different shared secrets");
+        assert_ne!(
+            ss1.0, ss2.0,
+            "Different keys must produce different shared secrets"
+        );
     }
 }

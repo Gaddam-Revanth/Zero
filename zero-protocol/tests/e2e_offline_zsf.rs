@@ -1,10 +1,10 @@
 // ZERO Protocol E2E Offline ZSF Test
-use zero_handshake::{NoiseHandshakeState, NoiseRole, X3dhInitiator, X3dhResponder};
-use zero_handshake::noise::HandshakePrologue;
-use zero_identity::{bundle::OwnedKeyBundle, zeroid::ZeroId, keypair::ZeroKeypair};
 use zero_crypto::dh::X25519Keypair;
-use zero_ratchet::{RatchetSession, SessionInit, RatchetMessage};
-use zero_store_forward::{ZsfEnvelope, decrypt_outer_for_relay, decrypt_inner};
+use zero_handshake::noise::HandshakePrologue;
+use zero_handshake::{NoiseHandshakeState, NoiseRole, X3dhInitiator, X3dhResponder};
+use zero_identity::{bundle::OwnedKeyBundle, keypair::ZeroKeypair, zeroid::ZeroId};
+use zero_ratchet::{RatchetMessage, RatchetSession, SessionInit};
+use zero_store_forward::{decrypt_inner, decrypt_outer_for_relay, ZsfEnvelope};
 
 #[test]
 fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
@@ -19,10 +19,16 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     let prologue = HandshakePrologue::v1_0(0);
 
     let mut alice = NoiseHandshakeState::new(
-        NoiseRole::Initiator, alice_kp.idk.clone(), X25519Keypair::generate(), &prologue,
+        NoiseRole::Initiator,
+        alice_kp.idk.clone(),
+        X25519Keypair::generate(),
+        &prologue,
     );
     let mut bob = NoiseHandshakeState::new(
-        NoiseRole::Responder, bob_owned.keypair.idk.clone(), X25519Keypair::generate(), &prologue,
+        NoiseRole::Responder,
+        bob_owned.keypair.idk.clone(),
+        X25519Keypair::generate(),
+        &prologue,
     );
 
     let msg1 = alice.write_message1().expect("msg1");
@@ -43,8 +49,9 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
         .initiate_with_noise_hash(&alice_id, &alice_kp, &bob_bundle, Some(noise_hash))
         .expect("alice initiate");
 
-    let (bob_ms, _bob_tag) = X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(noise_hash))
-        .expect("bob respond");
+    let (bob_ms, _bob_tag) =
+        X3dhResponder::respond_with_noise_hash(&mut bob_owned, &init_msg, Some(noise_hash))
+            .expect("bob respond");
 
     assert_eq!(alice_ms.0, bob_ms.0);
 
@@ -98,7 +105,10 @@ fn e2e_zkx_to_zr_to_zsf_offline_delivery() {
     assert_eq!(inner.sender_id, sender_id);
 
     // Recipient decrypts the ZR message
-    let zr_msg2: RatchetMessage = zero_crypto::cbor::from_slice(&inner.payload).expect("decode ratchet msg");
-    let pt = bob_zr.decrypt(&zr_msg2, associated_data, 0).expect("zr decrypt");
+    let zr_msg2: RatchetMessage =
+        zero_crypto::cbor::from_slice(&inner.payload).expect("decode ratchet msg");
+    let pt = bob_zr
+        .decrypt(&zr_msg2, associated_data, 0)
+        .expect("zr decrypt");
     assert_eq!(pt, b"hello via zsf");
 }

@@ -1,7 +1,7 @@
 //! Out-of-order message key cache for ZR.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use zero_crypto::dh::X25519PublicKey;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -26,24 +26,38 @@ pub struct SkippedKeyCache {
 impl SkippedKeyCache {
     /// Create a new, empty cache.
     pub fn new() -> Self {
-        Self { cache: HashMap::new() }
+        Self {
+            cache: HashMap::new(),
+        }
     }
 
     /// Insert a cached key.
     pub fn insert(&mut self, dh_pub: X25519PublicKey, counter: u32, key: [u8; 32], now: u64) {
         if self.cache.len() >= MAX_SKIPPED_KEYS {
             // Evict oldest key
-            let oldest = self.cache.iter()
+            let oldest = self
+                .cache
+                .iter()
                 .min_by_key(|(_, v)| v.cached_at)
                 .map(|(k, _)| k.clone());
-            if let Some(k) = oldest { self.cache.remove(&k); }
+            if let Some(k) = oldest {
+                self.cache.remove(&k);
+            }
         }
-        self.cache.insert((dh_pub, counter), CachedKey { key, cached_at: now });
+        self.cache.insert(
+            (dh_pub, counter),
+            CachedKey {
+                key,
+                cached_at: now,
+            },
+        );
     }
 
     /// Try to retrieve and remove a cached key.
     pub fn take(&mut self, dh_pub: &X25519PublicKey, counter: u32) -> Option<[u8; 32]> {
-        self.cache.remove(&(dh_pub.clone(), counter)).map(|ck| ck.key)
+        self.cache
+            .remove(&(dh_pub.clone(), counter))
+            .map(|ck| ck.key)
     }
 
     /// Purge keys older than `max_age_secs` seconds.

@@ -1,16 +1,16 @@
 //! X3DH + ML-KEM-768 hybrid key exchange for ZKX.
 
+use super::master_secret::{MasterSecret, MASTER_SECRET_SIZE};
 use crate::error::HandshakeError;
 use serde::{Deserialize, Serialize};
 use zero_crypto::{
-    dh::{X25519Keypair, X25519PublicKey, X25519SecretKey, x25519_diffie_hellman},
-    kem::{MlKem768EncapsKey, MlKem768Ciphertext, ml_kem_768_encapsulate, ml_kem_768_decapsulate},
+    dh::{x25519_diffie_hellman, X25519Keypair, X25519PublicKey, X25519SecretKey},
     kdf::{hkdf, KdfContext},
-    sign::{Ed25519PublicKey},
+    kem::{ml_kem_768_decapsulate, ml_kem_768_encapsulate, MlKem768Ciphertext, MlKem768EncapsKey},
+    sign::Ed25519PublicKey,
 };
-use zero_identity::{bundle::KeyBundle};
+use zero_identity::bundle::KeyBundle;
 use zero_identity::keypair::ZeroKeypair;
-use super::master_secret::{MasterSecret, MASTER_SECRET_SIZE};
 
 /// The initial ZKX message Alice sends to Bob.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +88,7 @@ impl X3dhInitiator {
                 let dh1 = x25519_diffie_hellman(&alice_idk_sk, &bob_spk_pub);
                 let dh2 = x25519_diffie_hellman(&initiator_ek_sk, &bob_idk_pub);
                 let dh3 = x25519_diffie_hellman(&initiator_ek_sk, &bob_spk_pub);
-                
+
                 let dh4 = if let Some(opk) = &bob_opk {
                     let opk_pub = X25519PublicKey(opk.public_key.0);
                     Some(x25519_diffie_hellman(&initiator_ek_sk, &opk_pub))
@@ -101,24 +101,23 @@ impl X3dhInitiator {
             || {
                 let pq_ek = MlKem768EncapsKey(pq_ek_bytes);
                 ml_kem_768_encapsulate(&pq_ek)
-            }
+            },
         );
 
         let (dh1, dh2, dh3, dh4_opt) = dh_results;
         let dh1 = dh1.map_err(|_| HandshakeError::DhFailed)?;
         let dh2 = dh2.map_err(|_| HandshakeError::DhFailed)?;
         let dh3 = dh3.map_err(|_| HandshakeError::DhFailed)?;
-        
+
         let (dh4_bytes, opk_index) = match (dh4_opt, &bob_opk) {
             (Some(res), Some(opk)) => {
                 let dh = res.map_err(|_| HandshakeError::DhFailed)?;
                 (dh.0.to_vec(), Some(opk.index))
-            },
+            }
             _ => (vec![], None),
         };
 
-        let (kem_ct, kem_ss) = kem_result
-            .map_err(|e| HandshakeError::KemError(e.to_string()))?;
+        let (kem_ct, kem_ss) = kem_result.map_err(|e| HandshakeError::KemError(e.to_string()))?;
 
         let mut ikm = Vec::with_capacity(32 + 32 * 5 + kem_ss.0.len());
         if let Some(h) = noise_hash {
@@ -127,16 +126,23 @@ impl X3dhInitiator {
         ikm.extend_from_slice(&dh1.0);
         ikm.extend_from_slice(&dh2.0);
         ikm.extend_from_slice(&dh3.0);
-        if !dh4_bytes.is_empty() { ikm.extend_from_slice(&dh4_bytes); }
+        if !dh4_bytes.is_empty() {
+            ikm.extend_from_slice(&dh4_bytes);
+        }
         ikm.extend_from_slice(&kem_ss.0);
 
-        let ms_bytes = hkdf(b"ZERO-ZKX-v1", &ikm, KdfContext::ZkxMasterSecret, MASTER_SECRET_SIZE)
-            .map_err(|_| HandshakeError::KdfError)?;
+        let ms_bytes = hkdf(
+            b"ZERO-ZKX-v1",
+            &ikm,
+            KdfContext::ZkxMasterSecret,
+            MASTER_SECRET_SIZE,
+        )
+        .map_err(|_| HandshakeError::KdfError)?;
         let mut ms_arr = [0u8; MASTER_SECRET_SIZE];
         ms_arr.copy_from_slice(&ms_bytes);
-        
+
         let ms = MasterSecret(ms_arr);
-        
+
         // R4: Generate Alice's tag
         let alice_tag = if let Some(h) = noise_hash {
             ms.generate_tag("A->B", &h)?
@@ -179,32 +185,65 @@ impl X3dhResponder {
         noise_hash: Option<[u8; 32]>,
     ) -> Result<(MasterSecret, [u8; 32]), HandshakeError> {
         // Verify Alice's identity keys match her ZeroId
-        if !init_msg.alice_id.verify_keys(&init_msg.alice_isk_pub.0, &init_msg.alice_idk_pub.0) {
+        if !init_msg
+            .alice_id
+            .verify_keys(&init_msg.alice_isk_pub.0, &init_msg.alice_idk_pub.0)
+        {
             return Err(HandshakeError::AuthenticationFailed);
         }
 
         let bob_keypair = &bob_bundle_owned.keypair;
-        let alice_ek_pub  = init_msg.alice_ek_pub.clone();
+        let alice_ek_pub = init_msg.alice_ek_pub.clone();
 
         if init_msg.bob_opk_index.is_none() {
-            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
             if bob_bundle_owned.recent_handshakes.len() > 1000 {
-                bob_bundle_owned.recent_handshakes.retain(|_, &mut ts| now.saturating_sub(ts) < 3600);
+                bob_bundle_owned
+                    .recent_handshakes
+                    .retain(|_, &mut ts| now.saturating_sub(ts) < 3600);
             }
-            if bob_bundle_owned.recent_handshakes.contains_key(&alice_ek_pub.0) {
+            if bob_bundle_owned
+                .recent_handshakes
+                .contains_key(&alice_ek_pub.0)
+            {
                 return Err(HandshakeError::AuthenticationFailed);
             }
-            bob_bundle_owned.recent_handshakes.insert(alice_ek_pub.0, now);
+            bob_bundle_owned
+                .recent_handshakes
+                .insert(alice_ek_pub.0, now);
         }
 
         let alice_idk_pub = init_msg.alice_idk_pub.clone();
 
         let spk_sk = if bob_bundle_owned.current_spk.index == init_msg.bob_spk_index {
-            X25519SecretKey(bob_bundle_owned.current_spk.secret_key.as_ref().ok_or(HandshakeError::AuthenticationFailed)?.0)
+            X25519SecretKey(
+                bob_bundle_owned
+                    .current_spk
+                    .secret_key
+                    .as_ref()
+                    .ok_or(HandshakeError::AuthenticationFailed)?
+                    .0,
+            )
         } else {
-            let old_spk = bob_bundle_owned.old_spks.get(&init_msg.bob_spk_index)
-                .ok_or_else(|| HandshakeError::BundleVerificationFailed(format!("SPK index {} not found in history", init_msg.bob_spk_index)))?;
-            X25519SecretKey(old_spk.secret_key.as_ref().ok_or(HandshakeError::AuthenticationFailed)?.0)
+            let old_spk = bob_bundle_owned
+                .old_spks
+                .get(&init_msg.bob_spk_index)
+                .ok_or_else(|| {
+                    HandshakeError::BundleVerificationFailed(format!(
+                        "SPK index {} not found in history",
+                        init_msg.bob_spk_index
+                    ))
+                })?;
+            X25519SecretKey(
+                old_spk
+                    .secret_key
+                    .as_ref()
+                    .ok_or(HandshakeError::AuthenticationFailed)?
+                    .0,
+            )
         };
 
         let idk_sk = bob_keypair.idk.secret_key();
@@ -219,9 +258,7 @@ impl X3dhResponder {
                 let dh3 = x25519_diffie_hellman(&spk_sk, &alice_ek_pub);
                 (dh1, dh2, dh3)
             },
-            || {
-                ml_kem_768_decapsulate(pq_dk, &kem_ct)
-            }
+            || ml_kem_768_decapsulate(pq_dk, &kem_ct),
         );
 
         let (dh1, dh2, dh3) = dh_results;
@@ -230,20 +267,22 @@ impl X3dhResponder {
         let dh3 = dh3.map_err(|_| HandshakeError::DhFailed)?;
 
         let dh4_bytes: Vec<u8> = if let Some(opk_index) = init_msg.bob_opk_index {
-            let opk = bob_bundle_owned.opks.iter_mut()
+            let opk = bob_bundle_owned
+                .opks
+                .iter_mut()
                 .find(|o| o.index == opk_index)
                 .ok_or_else(|| HandshakeError::BundleVerificationFailed("OPK not found".into()))?;
-            let sk = opk.consume()
-                .ok_or_else(|| HandshakeError::BundleVerificationFailed("OPK already consumed".into()))?;
-            let dh = x25519_diffie_hellman(&sk, &alice_ek_pub)
-                .map_err(|_| HandshakeError::DhFailed)?;
+            let sk = opk.consume().ok_or_else(|| {
+                HandshakeError::BundleVerificationFailed("OPK already consumed".into())
+            })?;
+            let dh =
+                x25519_diffie_hellman(&sk, &alice_ek_pub).map_err(|_| HandshakeError::DhFailed)?;
             dh.0.to_vec()
         } else {
             vec![]
         };
 
-        let kem_ss = kem_result
-            .map_err(|e| HandshakeError::KemError(e.to_string()))?;
+        let kem_ss = kem_result.map_err(|e| HandshakeError::KemError(e.to_string()))?;
 
         let mut ikm = Vec::with_capacity(32 + 32 * 5);
         if let Some(h) = noise_hash {
@@ -252,14 +291,21 @@ impl X3dhResponder {
         ikm.extend_from_slice(&dh1.0);
         ikm.extend_from_slice(&dh2.0);
         ikm.extend_from_slice(&dh3.0);
-        if !dh4_bytes.is_empty() { ikm.extend_from_slice(&dh4_bytes); }
+        if !dh4_bytes.is_empty() {
+            ikm.extend_from_slice(&dh4_bytes);
+        }
         ikm.extend_from_slice(&kem_ss.0);
 
-        let ms_bytes = hkdf(b"ZERO-ZKX-v1", &ikm, KdfContext::ZkxMasterSecret, MASTER_SECRET_SIZE)
-            .map_err(|_| HandshakeError::KdfError)?;
+        let ms_bytes = hkdf(
+            b"ZERO-ZKX-v1",
+            &ikm,
+            KdfContext::ZkxMasterSecret,
+            MASTER_SECRET_SIZE,
+        )
+        .map_err(|_| HandshakeError::KdfError)?;
         let mut ms_arr = [0u8; MASTER_SECRET_SIZE];
         ms_arr.copy_from_slice(&ms_bytes);
-        
+
         let ms = MasterSecret(ms_arr);
 
         // R4: Verify Alice's tag
@@ -290,13 +336,12 @@ mod tests {
         let bob_bundle = bob_owned.public_bundle(&bob_id);
 
         let initiator = X3dhInitiator::new(X25519Keypair::generate());
-        let (init_msg, alice_ms) = initiator.initiate(&alice_id, &alice_kp, &bob_bundle).unwrap();
+        let (init_msg, alice_ms) = initiator
+            .initiate(&alice_id, &alice_kp, &bob_bundle)
+            .unwrap();
 
         let mut bob_owned_correct = bob_owned;
-        let (bob_ms, _bob_tag) = X3dhResponder::respond(
-            &mut bob_owned_correct,
-            &init_msg,
-        ).unwrap();
+        let (bob_ms, _bob_tag) = X3dhResponder::respond(&mut bob_owned_correct, &init_msg).unwrap();
 
         assert_eq!(alice_ms.0, bob_ms.0);
     }

@@ -30,7 +30,9 @@ pub struct TcpTlsTransport;
 
 impl TcpTlsTransport {
     /// Bind a TCP/TLS server and return the DER certificate to trust.
-    pub async fn bind_server(addr: SocketAddr) -> Result<(TcpListener, Vec<u8>, TlsAcceptor), TransportError> {
+    pub async fn bind_server(
+        addr: SocketAddr,
+    ) -> Result<(TcpListener, Vec<u8>, TlsAcceptor), TransportError> {
         ensure_rustls_provider();
 
         let ck = rcgen::generate_simple_self_signed(vec!["zero.local".into()])
@@ -54,11 +56,17 @@ impl TcpTlsTransport {
     }
 
     /// Connect as a TCP/TLS client trusting a server certificate DER.
-    pub async fn connect(addr: SocketAddr, server_cert_der: &[u8]) -> Result<tokio_rustls::client::TlsStream<TcpStream>, TransportError> {
+    pub async fn connect(
+        addr: SocketAddr,
+        server_cert_der: &[u8],
+    ) -> Result<tokio_rustls::client::TlsStream<TcpStream>, TransportError> {
         ensure_rustls_provider();
 
         let mut roots = rustls::RootCertStore::empty();
-        roots.add(rustls::pki_types::CertificateDer::from(server_cert_der.to_vec()))
+        roots
+            .add(rustls::pki_types::CertificateDer::from(
+                server_cert_der.to_vec(),
+            ))
             .map_err(|e| TransportError::TlsError(e.to_string()))?;
 
         let client_crypto = rustls::ClientConfig::builder()
@@ -70,7 +78,8 @@ impl TcpTlsTransport {
 
         let server_name = rustls::pki_types::ServerName::try_from("zero.local")
             .map_err(|e| TransportError::TlsError(e.to_string()))?;
-        connector.connect(server_name, tcp)
+        connector
+            .connect(server_name, tcp)
             .await
             .map_err(|e| TransportError::TlsError(e.to_string()))
     }
@@ -81,7 +90,10 @@ impl TcpTlsTransport {
         acceptor: &TlsAcceptor,
     ) -> Result<tokio_rustls::server::TlsStream<TcpStream>, TransportError> {
         let (tcp, _peer) = listener.accept().await?;
-        acceptor.accept(tcp).await.map_err(|e| TransportError::TlsError(e.to_string()))
+        acceptor
+            .accept(tcp)
+            .await
+            .map_err(|e| TransportError::TlsError(e.to_string()))
     }
 
     /// Send a framed packet on a TLS stream.
@@ -89,7 +101,9 @@ impl TcpTlsTransport {
     where
         S: AsyncWriteExt + Unpin,
     {
-        let bytes = pkt.encode_v1().map_err(|e| TransportError::StreamError(e.to_string()))?;
+        let bytes = pkt
+            .encode_v1()
+            .map_err(|e| TransportError::StreamError(e.to_string()))?;
         let mut frame = BytesMut::with_capacity(4 + bytes.len());
         frame.put_u32(bytes.len() as u32);
         frame.put_slice(&bytes);
@@ -108,7 +122,8 @@ impl TcpTlsTransport {
         let mut b = &len_buf[..];
         let len = b.get_u32() as usize;
         // Bound maximum read to avoid memory DoS
-        let max = (zero_wire::header::HEADER_LEN_V1 as usize) + (zero_wire::header::MAX_BODY_LEN as usize);
+        let max = (zero_wire::header::HEADER_LEN_V1 as usize)
+            + (zero_wire::header::MAX_BODY_LEN as usize);
         if len > max {
             return Err(TransportError::StreamError("frame too large".into()));
         }

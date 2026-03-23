@@ -22,4 +22,3 @@ pub fn aad_bytes_v1(h: &PacketHeader, sender: &[u8; 32], receiver: &[u8; 32]) ->
     out.extend_from_slice(receiver);
     out
 }
-

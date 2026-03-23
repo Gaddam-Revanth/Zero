@@ -1,12 +1,12 @@
 //! X25519 Diffie-Hellman key exchange for ZERO Protocol.
 
 use crate::error::CryptoError;
+use curve25519_dalek::constants::X25519_BASEPOINT;
+use curve25519_dalek::montgomery::MontgomeryPoint;
+use curve25519_dalek::scalar::Scalar;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::montgomery::MontgomeryPoint;
-use curve25519_dalek::constants::X25519_BASEPOINT;
 
 pub const X25519_KEY_SIZE: usize = 32;
 
@@ -36,15 +36,15 @@ impl X25519Keypair {
         let mut rng = OsRng;
         let mut secret_bytes = [0u8; 32];
         rng.fill_bytes(&mut secret_bytes);
-        
+
         // Clamp the secret bytes for X25519 (RFC 7748)
         secret_bytes[0] &= 248;
         secret_bytes[31] &= 127;
         secret_bytes[31] |= 64;
-        
+
         let scalar = Scalar::from_bytes_mod_order(secret_bytes);
         let public = scalar * X25519_BASEPOINT;
-        
+
         Self {
             secret: secret_bytes,
             public: public.to_bytes(),
@@ -54,7 +54,7 @@ impl X25519Keypair {
     pub fn from_secret_bytes(bytes: [u8; X25519_KEY_SIZE]) -> Self {
         let scalar = Scalar::from_bytes_mod_order(bytes);
         let public = scalar * X25519_BASEPOINT;
-        
+
         Self {
             secret: bytes,
             public: public.to_bytes(),
@@ -73,7 +73,7 @@ impl X25519Keypair {
         let scalar = Scalar::from_bytes_mod_order(self.secret);
         let point = MontgomeryPoint(their_public.0);
         let shared = scalar * point;
-        
+
         X25519SharedSecret(shared.to_bytes())
     }
 }
@@ -94,7 +94,7 @@ pub fn x25519_diffie_hellman(
     let scalar = Scalar::from_bytes_mod_order(secret_key.0);
     let point = MontgomeryPoint(public_key.0);
     let shared = scalar * point;
-    
+
     let output = shared.to_bytes();
     use subtle::ConstantTimeEq;
     if output.ct_eq(&[0u8; 32]).unwrap_u8() == 1 {
@@ -111,10 +111,10 @@ mod tests {
     fn test_dh_exchange() {
         let kp1 = X25519Keypair::generate();
         let kp2 = X25519Keypair::generate();
-        
+
         let ss1 = kp1.diffie_hellman(&kp2.public_key());
         let ss2 = kp2.diffie_hellman(&kp1.public_key());
-        
+
         assert_eq!(ss1.0, ss2.0);
         assert!(ss1.0.iter().any(|&b| b != 0));
     }

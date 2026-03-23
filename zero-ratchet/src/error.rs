@@ -19,18 +19,18 @@ pub enum RatchetError {
 
     /// Message key not found in skipped-key cache.
     #[error("Unknown message: counter={counter}, no cached key")]
-    UnknownMessageKey { 
+    UnknownMessageKey {
         /// The counter of the unknown message.
-        counter: u32 
+        counter: u32,
     },
 
     /// Too many skipped messages — potential DoS.
     #[error("Too many skipped messages: {skipped} > {max}")]
-    TooManySkippedKeys { 
+    TooManySkippedKeys {
         /// Number of keys skipped.
-        skipped: usize, 
+        skipped: usize,
         /// Maximum allowed skip count.
-        max: usize 
+        max: usize,
     },
 
     /// DH ratchet step failed.

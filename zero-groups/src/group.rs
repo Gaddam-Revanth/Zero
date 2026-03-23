@@ -1,10 +1,12 @@
 //! Group messaging state (Megolm-inspired sender ratchets).
-use std::collections::HashMap;
-use zero_identity::zeroid::ZeroId;
-use zero_crypto::sign::{Ed25519Keypair, Ed25519PublicKey, ed25519_sign, ed25519_verify, Ed25519Signature};
-use zero_crypto::hash::blake2b_256;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use zero_crypto::hash::blake2b_256;
+use zero_crypto::sign::{
+    ed25519_sign, ed25519_verify, Ed25519Keypair, Ed25519PublicKey, Ed25519Signature,
+};
+use zero_identity::zeroid::ZeroId;
 
 use crate::error::GroupError;
 
@@ -62,12 +64,12 @@ impl GroupState {
     pub fn new(admin_id: ZeroId, creation_timestamp: u64) -> Self {
         let gsk = Ed25519Keypair::generate();
         let gpk = gsk.public_key();
-        
+
         let mut id_material = Vec::new();
         id_material.extend_from_slice(admin_id.as_bytes());
         id_material.extend_from_slice(&creation_timestamp.to_be_bytes());
         let group_id = blake2b_256(&id_material);
-        
+
         // Initial sender chain root (32 bytes of randomness)
         let mut initial_chain = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut initial_chain);
@@ -82,7 +84,7 @@ impl GroupState {
                 join_timestamp: creation_timestamp,
             },
         );
-        
+
         Self {
             group_id,
             gsk: Some(gsk),
@@ -94,18 +96,24 @@ impl GroupState {
     }
 
     /// Sign a group event (if we are an admin).
-    pub fn sign_event(&self, event_type: &str, target_id: &ZeroId, timestamp: u64, payload: &[u8]) -> Result<GroupEvent, GroupError> {
+    pub fn sign_event(
+        &self,
+        event_type: &str,
+        target_id: &ZeroId,
+        timestamp: u64,
+        payload: &[u8],
+    ) -> Result<GroupEvent, GroupError> {
         let gsk = self.gsk.as_ref().ok_or(GroupError::NotAdmin)?;
-        
+
         let mut data_to_sign = Vec::new();
         data_to_sign.extend_from_slice(&self.group_id);
         data_to_sign.extend_from_slice(event_type.as_bytes());
         data_to_sign.extend_from_slice(target_id.as_bytes());
         data_to_sign.extend_from_slice(&timestamp.to_be_bytes());
         data_to_sign.extend_from_slice(payload);
-        
+
         let sig = ed25519_sign(&gsk.secret_key(), &data_to_sign);
-        
+
         Ok(GroupEvent {
             group_id: self.group_id,
             event_type: event_type.to_string(),
@@ -115,27 +123,26 @@ impl GroupState {
             signature: sig.0.to_vec(),
         })
     }
-    
+
     /// Verify a group event signature against the group's public key
     pub fn verify_event(&self, event: &GroupEvent) -> Result<(), GroupError> {
         if event.group_id != self.group_id {
             return Err(GroupError::InvalidSignature);
         }
-        
+
         let mut data_to_sign = Vec::new();
         data_to_sign.extend_from_slice(&event.group_id);
         data_to_sign.extend_from_slice(event.event_type.as_bytes());
         data_to_sign.extend_from_slice(event.target_id.as_bytes());
         data_to_sign.extend_from_slice(&event.timestamp.to_be_bytes());
         data_to_sign.extend_from_slice(&event.payload);
-        
+
         let sig = Ed25519Signature(event.signature.clone());
-        ed25519_verify(&self.gpk, &data_to_sign, &sig)
-            .map_err(|_| GroupError::InvalidSignature)?;
-        
+        ed25519_verify(&self.gpk, &data_to_sign, &sig).map_err(|_| GroupError::InvalidSignature)?;
+
         Ok(())
     }
-    
+
     /// Rotate our sender key (e.g. when someone is removed)
     /// This uses a BLAKE2b-based ratchet step to derive the next chain root.
     pub fn rotate_sender_key(&mut self, our_id: &ZeroId) -> Result<[u8; 32], GroupError> {
@@ -144,14 +151,14 @@ impl GroupState {
             rand::thread_rng().fill_bytes(&mut r);
             r
         });
-        
+
         // Ratchet: next_chain = BLAKE2b-256(current_chain || "ZGP-ratchet-v1")
         let mut input = current_chain.to_vec();
         input.extend_from_slice(b"ZGP-ratchet-v1");
         let new_chain = blake2b_256(&input);
-        
+
         self.sender_chain = Some(new_chain);
-        
+
         if let Some(member) = self.members.get_mut(our_id) {
             member.sender_key = new_chain;
         }

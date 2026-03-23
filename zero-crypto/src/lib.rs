@@ -36,8 +36,14 @@ pub use error::CryptoError;
 
 /// Re-export key types used throughout the workspace
 pub use aead::{decrypt, encrypt, AeadKey, AeadNonce, AEAD_KEY_SIZE, AEAD_NONCE_SIZE, TAG_SIZE};
-pub use dh::{x25519_diffie_hellman, X25519PublicKey, X25519SecretKey, X25519Keypair};
+pub use dh::{x25519_diffie_hellman, X25519Keypair, X25519PublicKey, X25519SecretKey};
 pub use hash::{blake2b_256, blake2b_512, Blake2b256, Blake2b512};
 pub use kdf::{argon2id_derive, hkdf, hkdf_expand, hkdf_extract, KdfContext};
-pub use kem::{MlKem768Ciphertext, MlKem768DecapsKey, MlKem768EncapsKey, MlKem768SharedSecret, MlKem768Keypair, ml_kem_768_encapsulate, ml_kem_768_decapsulate};
-pub use sign::{ed25519_sign, ed25519_verify, Ed25519PublicKey, Ed25519SecretKey, Ed25519Keypair, Ed25519Signature};
+pub use kem::{
+    ml_kem_768_decapsulate, ml_kem_768_encapsulate, MlKem768Ciphertext, MlKem768DecapsKey,
+    MlKem768EncapsKey, MlKem768Keypair, MlKem768SharedSecret,
+};
+pub use sign::{
+    ed25519_sign, ed25519_verify, Ed25519Keypair, Ed25519PublicKey, Ed25519SecretKey,
+    Ed25519Signature,
+};

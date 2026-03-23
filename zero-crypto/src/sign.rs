@@ -1,7 +1,7 @@
 //! Ed25519 digital signatures for ZERO Protocol.
 
 use crate::error::CryptoError;
-use ed25519_dalek::{Signer, Verifier, SigningKey, Signature, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -86,18 +86,18 @@ impl Ed25519Keypair {
         Ed25519Signature(signature.to_bytes().to_vec())
     }
 
-    pub fn verify(
-        &self,
-        message: &[u8],
-        signature: &Ed25519Signature,
-    ) -> Result<(), CryptoError> {
+    pub fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), CryptoError> {
         if signature.0.len() != ED25519_SIGNATURE_SIZE {
             return Err(CryptoError::InvalidSignature);
         }
-        let sig_bytes: [u8; 64] = signature.0.as_slice().try_into()
+        let sig_bytes: [u8; 64] = signature
+            .0
+            .as_slice()
+            .try_into()
             .map_err(|_| CryptoError::InvalidSignature)?;
         let sig = Signature::from_bytes(&sig_bytes);
-        self.signing_key.verifying_key()
+        self.signing_key
+            .verifying_key()
             .verify(message, &sig)
             .map_err(|_| CryptoError::SignatureVerificationFailed)
     }
@@ -113,12 +113,14 @@ pub fn ed25519_verify(
     message: &[u8],
     signature: &Ed25519Signature,
 ) -> Result<(), CryptoError> {
-    let vk = VerifyingKey::from_bytes(&public_key.0)
-        .map_err(|_| CryptoError::InvalidPublicKey)?;
+    let vk = VerifyingKey::from_bytes(&public_key.0).map_err(|_| CryptoError::InvalidPublicKey)?;
     if signature.0.len() != ED25519_SIGNATURE_SIZE {
         return Err(CryptoError::InvalidSignature);
     }
-    let sig_bytes: [u8; 64] = signature.0.as_slice().try_into()
+    let sig_bytes: [u8; 64] = signature
+        .0
+        .as_slice()
+        .try_into()
         .map_err(|_| CryptoError::InvalidSignature)?;
     let sig = Signature::from_bytes(&sig_bytes);
     vk.verify(message, &sig)

@@ -12,4 +12,4 @@ pub mod protocol;
 pub mod server;
 
 pub use error::RelayError;
-pub use server::{RelayServer, RelayConfig};
+pub use server::{RelayConfig, RelayServer};

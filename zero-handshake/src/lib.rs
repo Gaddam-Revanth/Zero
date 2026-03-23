@@ -18,14 +18,14 @@
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 
+/// Background ephemeral key pool management.
+pub mod ephemeral_pool;
 pub mod error;
 pub mod master_secret;
 pub mod noise;
 pub mod x3dh;
-/// Background ephemeral key pool management.
-pub mod ephemeral_pool;
 
 pub use error::HandshakeError;
 pub use master_secret::{MasterSecret, ZkxOutput, MASTER_SECRET_SIZE};
-pub use noise::{NoiseHandshakeState, NoiseRole, HandshakePrologue};
+pub use noise::{HandshakePrologue, NoiseHandshakeState, NoiseRole};
 pub use x3dh::{X3dhInitiator, X3dhResponder, ZkxInitMessage};

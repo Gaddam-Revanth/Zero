@@ -26,7 +26,7 @@ pub use kbucket::{KBucket, K_BUCKET_SIZE};
 pub use node_record::{EncryptedNodeRecord, NodeRecord};
 pub use packets::{DhtPacket, DhtPacketType};
 pub use routing_table::RoutingTable;
-use serde::{Deserialize, Serialize, Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// A ZDHT Node ID (256-bit = 32 bytes).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -98,7 +98,9 @@ impl std::fmt::Debug for NodeId {
 
 impl std::ops::Deref for NodeId {
     type Target = [u8; 32];
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 /// Derive a NodeID from an ISK public key.

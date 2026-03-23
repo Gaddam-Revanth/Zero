@@ -7,11 +7,11 @@
 //! - Final file-hash verification after reassembly
 #![allow(missing_docs)]
 
-use std::path::{Path, PathBuf};
-use std::collections::HashMap;
-use zero_crypto::hash::blake2b_256;
 use crate::error::ZeroError;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use zero_crypto::hash::blake2b_256;
 
 /// Default chunk size: 64 KiB.
 pub const CHUNK_SIZE: usize = 64 * 1024;
@@ -83,7 +83,10 @@ pub struct IncomingTransfer {
 impl IncomingTransfer {
     /// Create a new incoming transfer tracker from a received offer.
     pub fn new(offer: FileOffer) -> Self {
-        Self { offer, received: HashMap::new() }
+        Self {
+            offer,
+            received: HashMap::new(),
+        }
     }
 
     /// The index of the next chunk we need (for generating a resume request).
@@ -114,11 +117,15 @@ impl IncomingTransfer {
         let actual_hash = blake2b_256(&chunk.data);
         if actual_hash != chunk.chunk_hash {
             return Err(ZeroError::Custom(format!(
-                "Chunk {} hash mismatch — data corrupted in transit", chunk.index
+                "Chunk {} hash mismatch — data corrupted in transit",
+                chunk.index
             )));
         }
         self.received.insert(chunk.index, chunk.data);
-        Ok(ChunkAck { transfer_id: chunk.transfer_id, index: chunk.index })
+        Ok(ChunkAck {
+            transfer_id: chunk.transfer_id,
+            index: chunk.index,
+        })
     }
 
     /// Check if all chunks have been received.
@@ -133,14 +140,16 @@ impl IncomingTransfer {
         }
         let mut data = Vec::with_capacity(self.offer.size as usize);
         for i in 0..self.offer.total_chunks {
-            let chunk = self.received.get(&i)
+            let chunk = self
+                .received
+                .get(&i)
                 .ok_or_else(|| ZeroError::Custom(format!("Missing chunk {}", i)))?;
             data.extend_from_slice(chunk);
         }
         let file_hash = blake2b_256(&data);
         if file_hash != self.offer.file_hash {
             return Err(ZeroError::Custom(
-                "Final file hash mismatch — transfer is corrupted".to_string()
+                "Final file hash mismatch — transfer is corrupted".to_string(),
             ));
         }
         Ok(data)
@@ -189,7 +198,10 @@ impl ZftManager {
     /// Read a file and produce a FileOffer + all chunks ready to send.
     /// Returns (offer, all_chunks) — caller sends the offer first, then chunks
     /// starting from `start_chunk` (0 for fresh transfer, >0 for resume).
-    pub async fn prepare_send(&self, path: &Path) -> Result<(FileOffer, Vec<FileChunk>), ZeroError> {
+    pub async fn prepare_send(
+        &self,
+        path: &Path,
+    ) -> Result<(FileOffer, Vec<FileChunk>), ZeroError> {
         let content = tokio::fs::read(path)
             .await
             .map_err(|e| ZeroError::Custom(e.to_string()))?;
@@ -234,17 +246,22 @@ impl ZftManager {
     /// Filter the full chunk list to only include chunks from `start_chunk` onward.
     /// Use after receiving a FileAccept or FileResume to honour resume requests.
     pub fn chunks_from(chunks: Vec<FileChunk>, start_chunk: u32) -> Vec<FileChunk> {
-        chunks.into_iter().filter(|c| c.index >= start_chunk).collect()
+        chunks
+            .into_iter()
+            .filter(|c| c.index >= start_chunk)
+            .collect()
     }
 
     /// Start tracking an incoming transfer once we receive the offer.
     pub fn accept_offer(&self, offer: FileOffer) {
-        self.incoming.insert(offer.transfer_id.clone(), IncomingTransfer::new(offer));
+        self.incoming
+            .insert(offer.transfer_id.clone(), IncomingTransfer::new(offer));
     }
 
     /// Process an incoming chunk. Returns ChunkAck on success.
     pub fn process_chunk(&self, chunk: FileChunk) -> Result<ChunkAck, ZeroError> {
-        let mut entry = self.incoming
+        let mut entry = self
+            .incoming
             .get_mut(&chunk.transfer_id)
             .ok_or_else(|| ZeroError::Custom("Unknown transfer ID".to_string()))?;
         entry.receive_chunk(chunk)
@@ -252,7 +269,8 @@ impl ZftManager {
 
     /// Build a resume request for an interrupted transfer.
     pub fn build_resume(&self, transfer_id: &str) -> Result<FileResume, ZeroError> {
-        let entry = self.incoming
+        let entry = self
+            .incoming
             .get(transfer_id)
             .ok_or_else(|| ZeroError::Custom("Unknown transfer ID".to_string()))?;
         Ok(entry.build_resume())
@@ -261,7 +279,8 @@ impl ZftManager {
     /// Finalize a complete incoming transfer — reassemble, verify, and save to disk.
     pub async fn finalize_transfer(&self, transfer_id: &str) -> Result<PathBuf, ZeroError> {
         let dest = {
-            let entry = self.incoming
+            let entry = self
+                .incoming
                 .get(transfer_id)
                 .ok_or_else(|| ZeroError::Custom("Unknown transfer ID".to_string()))?;
             entry.save_to(&self.download_dir).await?

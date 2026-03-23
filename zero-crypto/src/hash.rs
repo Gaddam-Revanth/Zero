@@ -1,7 +1,7 @@
 //! BLAKE2b hashing for ZERO Protocol.
 
-use blake2::{Blake2b512 as Blake2b512Hasher, Digest};
 use blake2::digest::consts::U32;
+use blake2::{Blake2b512 as Blake2b512Hasher, Digest};
 
 pub const BLAKE2B_256_SIZE: usize = 32;
 pub const BLAKE2B_512_SIZE: usize = 64;

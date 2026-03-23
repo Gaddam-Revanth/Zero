@@ -2,7 +2,10 @@
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 
-use crate::{types::{PacketFlags, PacketType, Version}, WireError};
+use crate::{
+    types::{PacketFlags, PacketType, Version},
+    WireError,
+};
 
 /// ASCII magic `ZERO`.
 pub const MAGIC: [u8; 4] = *b"ZERO";
@@ -42,8 +45,18 @@ pub struct PacketHeader {
 
 impl PacketHeader {
     /// Create a new v1.0 header.
-    pub fn new(version: Version, packet_type: PacketType, flags: PacketFlags, body_len: u32) -> Self {
-        Self { version, packet_type, flags, body_len }
+    pub fn new(
+        version: Version,
+        packet_type: PacketType,
+        flags: PacketFlags,
+        body_len: u32,
+    ) -> Self {
+        Self {
+            version,
+            packet_type,
+            flags,
+            body_len,
+        }
     }
 
     /// Validate header and enforce limits for v1.0.
@@ -55,7 +68,10 @@ impl PacketHeader {
             return Err(WireError::ReservedBitsSet);
         }
         if self.body_len > MAX_BODY_LEN {
-            return Err(WireError::BodyTooLarge { got: self.body_len, max: MAX_BODY_LEN });
+            return Err(WireError::BodyTooLarge {
+                got: self.body_len,
+                max: MAX_BODY_LEN,
+            });
         }
         Ok(())
     }
@@ -91,13 +107,16 @@ impl PacketHeader {
         let version = Version { major, minor };
 
         let pt_raw = b.get_u16();
-        let packet_type = PacketType::from_u16(pt_raw)
-            .ok_or(WireError::UnsupportedVersion(version))?;
+        let packet_type =
+            PacketType::from_u16(pt_raw).ok_or(WireError::UnsupportedVersion(version))?;
 
         let flags = PacketFlags(b.get_u16());
         let header_len = b.get_u16();
         if header_len != HEADER_LEN_V1 {
-            return Err(WireError::InvalidHeaderLen { expected: HEADER_LEN_V1, got: header_len });
+            return Err(WireError::InvalidHeaderLen {
+                expected: HEADER_LEN_V1,
+                got: header_len,
+            });
         }
         let body_len = b.get_u32();
 
@@ -151,15 +170,19 @@ impl Packet {
         if b.len() < total {
             return Err(WireError::Truncated);
         }
-        
+
         // Extract routing IDs
         let mut sender = [0u8; 32];
-        sender.copy_from_slice(&b[HEADER_LEN_V1 as usize .. HEADER_LEN_V1 as usize + 32]);
+        sender.copy_from_slice(&b[HEADER_LEN_V1 as usize..HEADER_LEN_V1 as usize + 32]);
         let mut receiver = [0u8; 32];
-        receiver.copy_from_slice(&b[HEADER_LEN_V1 as usize + 32 .. HEADER_LEN_V1 as usize + 64]);
-        
-        let body = Bytes::copy_from_slice(&b[HEADER_LEN_V1 as usize + 64 .. total]);
-        Ok(Packet { header, sender_node_id: sender, receiver_node_id: receiver, body })
+        receiver.copy_from_slice(&b[HEADER_LEN_V1 as usize + 32..HEADER_LEN_V1 as usize + 64]);
+
+        let body = Bytes::copy_from_slice(&b[HEADER_LEN_V1 as usize + 64..total]);
+        Ok(Packet {
+            header,
+            sender_node_id: sender,
+            receiver_node_id: receiver,
+            body,
+        })
     }
 }
-

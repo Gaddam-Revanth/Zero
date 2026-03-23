@@ -4,15 +4,15 @@
 //! In ZDHT, node records are encrypted with each contact's X25519 public key,
 //! so only authorised contacts can learn your current IP address.
 
+use crate::error::DhtError;
+use crate::NodeId;
 use serde::{Deserialize, Serialize};
 use zero_crypto::{
     aead::{decrypt, encrypt, AeadKey, AeadNonce},
-    dh::{X25519Keypair, X25519PublicKey, x25519_diffie_hellman},
+    dh::{x25519_diffie_hellman, X25519Keypair, X25519PublicKey},
     kdf::{hkdf_expand, hkdf_extract, KdfContext},
-    sign::{Ed25519Keypair, Ed25519Signature, ed25519_verify, Ed25519PublicKey},
+    sign::{ed25519_verify, Ed25519Keypair, Ed25519PublicKey, Ed25519Signature},
 };
-use crate::error::DhtError;
-use crate::NodeId;
 
 /// A plaintext node record (what the owner knows about themselves).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -62,8 +62,7 @@ impl NodeRecord {
     pub fn verify(&self) -> Result<(), DhtError> {
         let data = self.signable_bytes();
         let isk_pub = Ed25519PublicKey(self.isk_pub);
-        ed25519_verify(&isk_pub, &data, &self.signature)
-            .map_err(|_| DhtError::InvalidSignature)
+        ed25519_verify(&isk_pub, &data, &self.signature).map_err(|_| DhtError::InvalidSignature)
     }
 
     fn signable_bytes(&self) -> Vec<u8> {
@@ -72,7 +71,9 @@ impl NodeRecord {
         data.extend_from_slice(&self.isk_pub);
         data.extend_from_slice(&self.ip);
         data.extend_from_slice(&self.port.to_le_bytes());
-        for relay in &self.zsf_relays { data.extend_from_slice(&relay.0); }
+        for relay in &self.zsf_relays {
+            data.extend_from_slice(&relay.0);
+        }
         data.extend_from_slice(&self.timestamp.to_le_bytes());
         data
     }
@@ -95,10 +96,7 @@ pub struct EncryptedNodeRecord {
 
 impl EncryptedNodeRecord {
     /// Encrypt a NodeRecord for a specific contact's X25519 public key.
-    pub fn encrypt(
-        record: &NodeRecord,
-        contact_pub: &X25519PublicKey,
-    ) -> Result<Self, DhtError> {
+    pub fn encrypt(record: &NodeRecord, contact_pub: &X25519PublicKey) -> Result<Self, DhtError> {
         let ephemeral = X25519Keypair::generate();
         let shared = ephemeral.diffie_hellman(contact_pub);
         let aead_key = derive_record_key(&shared.0, &ephemeral.public_key().0)
@@ -124,40 +122,49 @@ impl EncryptedNodeRecord {
     }
 
     /// Decrypt a node record using our X25519 secret key and verify freshness against current time.
-    pub fn decrypt(&self, our_secret: &zero_crypto::dh::X25519SecretKey, now_unix: u64) -> Result<NodeRecord, DhtError> {
+    pub fn decrypt(
+        &self,
+        our_secret: &zero_crypto::dh::X25519SecretKey,
+        now_unix: u64,
+    ) -> Result<NodeRecord, DhtError> {
         let their_pub = X25519PublicKey(self.ephemeral_pub);
         let shared = x25519_diffie_hellman(our_secret, &their_pub)
             .map_err(|e| DhtError::CryptoError(e.to_string()))?;
         let aead_key = derive_record_key(&shared.0, &self.ephemeral_pub)
             .map_err(|e| DhtError::CryptoError(e.to_string()))?;
         let ct = &self.ciphertext;
-        if ct.len() < 12 { return Err(DhtError::CryptoError("Too short".into())); }
+        if ct.len() < 12 {
+            return Err(DhtError::CryptoError("Too short".into()));
+        }
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes.copy_from_slice(&ct[..12]);
         let nonce = AeadNonce(nonce_bytes);
-        
+
         // Spec 6.3: AAD MUST be bound to NodeId AND protocol version
         let mut aad = Vec::new();
         aad.extend_from_slice(b"ZERO-v1");
         aad.extend_from_slice(&self.node_id.0);
-        
+
         let pt = decrypt(&aead_key, &nonce, &ct[12..], &aad)
             .map_err(|_| DhtError::CryptoError("Decryption failed".into()))?;
         let record: NodeRecord = zero_crypto::cbor::from_slice(&pt)
             .map_err(|e| DhtError::SerializationError(e.to_string()))?;
         record.verify()?;
-        
+
         // Spec 6.3: Decrypting clients MUST verify freshness window (+/- 10 minutes)
         let diff = record.timestamp.abs_diff(now_unix);
         if diff > 600 {
             return Err(DhtError::CryptoError("Freshness window exceeded".into()));
         }
-        
+
         Ok(record)
     }
 }
 
-fn derive_record_key(shared: &[u8], ephemeral_pub: &[u8]) -> Result<AeadKey, zero_crypto::CryptoError> {
+fn derive_record_key(
+    shared: &[u8],
+    ephemeral_pub: &[u8],
+) -> Result<AeadKey, zero_crypto::CryptoError> {
     let prk = hkdf_extract(ephemeral_pub, shared);
     let key = hkdf_expand(&prk, KdfContext::DhtRecordKey, 32)?;
     let mut arr = [0u8; 32];
@@ -175,7 +182,12 @@ mod tests {
     fn test_record_sign_verify() {
         let isk = Ed25519Keypair::generate();
         let record = NodeRecord::create(
-            NodeId([1u8; 32]), &isk, vec![127, 0, 0, 1], 44300, vec![], 1000,
+            NodeId([1u8; 32]),
+            &isk,
+            vec![127, 0, 0, 1],
+            44300,
+            vec![],
+            1000,
         );
         assert!(record.verify().is_ok());
     }
@@ -184,9 +196,8 @@ mod tests {
     fn test_encrypt_decrypt_record() {
         let isk = Ed25519Keypair::generate();
         let contact_kp = X25519Keypair::generate();
-        let record = NodeRecord::create(
-            NodeId([1u8; 32]), &isk, vec![1, 2, 3, 4], 44300, vec![], 0,
-        );
+        let record =
+            NodeRecord::create(NodeId([1u8; 32]), &isk, vec![1, 2, 3, 4], 44300, vec![], 0);
         let enc = EncryptedNodeRecord::encrypt(&record, &contact_kp.public_key()).unwrap();
         let dec = enc.decrypt(&contact_kp.secret_key(), 0).unwrap();
         assert_eq!(dec.ip, vec![1u8, 2, 3, 4]);
@@ -198,7 +209,14 @@ mod tests {
         let isk = Ed25519Keypair::generate();
         let contact_kp = X25519Keypair::generate();
         let wrong_kp = X25519Keypair::generate();
-        let record = NodeRecord::create(NodeId([1u8; 32]), &isk, vec![127, 0, 0, 1], 44300, vec![], 0);
+        let record = NodeRecord::create(
+            NodeId([1u8; 32]),
+            &isk,
+            vec![127, 0, 0, 1],
+            44300,
+            vec![],
+            0,
+        );
         let enc = EncryptedNodeRecord::encrypt(&record, &contact_kp.public_key()).unwrap();
         assert!(enc.decrypt(&wrong_kp.secret_key(), 0).is_err());
     }

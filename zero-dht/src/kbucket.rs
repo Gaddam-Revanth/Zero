@@ -34,7 +34,9 @@ pub struct KBucket {
 impl KBucket {
     /// Create an empty k-bucket.
     pub fn new() -> Self {
-        Self { nodes: Vec::with_capacity(K_BUCKET_SIZE) }
+        Self {
+            nodes: Vec::with_capacity(K_BUCKET_SIZE),
+        }
     }
 
     /// Add or refresh a node in this bucket.

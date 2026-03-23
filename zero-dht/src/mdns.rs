@@ -26,10 +26,12 @@ pub fn start_mdns_discovery(port: u16) {
         "", // IP is discovered automatically
         port,
         properties,
-    ).expect("valid service info");
+    )
+    .expect("valid service info");
 
     // Register our service
-    mdns.register(my_service).expect("Failed to register mDNS service");
+    mdns.register(my_service)
+        .expect("Failed to register mDNS service");
     info!("mDNS: Registered ZERO node on port {}", port);
 
     // Browse for other ZERO nodes
@@ -38,7 +40,11 @@ pub fn start_mdns_discovery(port: u16) {
     std::thread::spawn(move || {
         while let Ok(event) = browse_receiver.recv() {
             if let mdns_sd::ServiceEvent::ServiceResolved(info) = event {
-                info!("mDNS: Resolved new ZERO node: {} at {:?}", info.get_fullname(), info.get_addresses());
+                info!(
+                    "mDNS: Resolved new ZERO node: {} at {:?}",
+                    info.get_fullname(),
+                    info.get_addresses()
+                );
                 // logic: add to discovery list
             }
         }

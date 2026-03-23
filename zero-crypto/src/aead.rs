@@ -35,7 +35,9 @@ impl AeadNonce {
         let mut nonce = self.0;
         for byte in &mut nonce {
             *byte = byte.wrapping_add(1);
-            if *byte != 0 { break; }
+            if *byte != 0 {
+                break;
+            }
         }
         AeadNonce(nonce)
     }

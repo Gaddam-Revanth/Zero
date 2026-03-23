@@ -43,8 +43,8 @@ pub struct ReplayCache {
 impl ReplayCache {
     /// Create a replay cache with TTL in milliseconds.
     pub fn new(ttl_ms: u64) -> Self {
-        Self { 
-            ttl_ms, 
+        Self {
+            ttl_ms,
             entries: DashMap::new(),
             last_purge_ms: std::sync::atomic::AtomicU64::new(0),
         }
@@ -58,10 +58,13 @@ impl ReplayCache {
         packet_type: PacketType,
         token: &ReplayToken,
     ) -> bool {
-        let last_purge = self.last_purge_ms.load(std::sync::atomic::Ordering::Relaxed);
+        let last_purge = self
+            .last_purge_ms
+            .load(std::sync::atomic::Ordering::Relaxed);
         if now_ms.saturating_sub(last_purge) > 60_000 {
             self.purge(now_ms);
-            self.last_purge_ms.store(now_ms, std::sync::atomic::Ordering::Relaxed);
+            self.last_purge_ms
+                .store(now_ms, std::sync::atomic::Ordering::Relaxed);
         }
         let k = key(receiver_node_id, packet_type, token);
         let expiry = now_ms.saturating_add(self.ttl_ms);
@@ -88,4 +91,3 @@ mod tests {
         assert!(!cache.check_and_insert(t + 1, &receiver, PacketType::ZkxInit, &tok));
     }
 }
-

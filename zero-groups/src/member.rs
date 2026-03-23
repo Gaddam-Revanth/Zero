@@ -5,10 +5,10 @@
 //! When a member is removed, the admin rotates sender keys and distributes them
 //! to all remaining members.
 
-use zero_identity::zeroid::ZeroId;
-use serde::{Deserialize, Serialize};
 use crate::error::GroupError;
-use crate::group::{GroupState, GroupMember};
+use crate::group::{GroupMember, GroupState};
+use serde::{Deserialize, Serialize};
+use zero_identity::zeroid::ZeroId;
 
 /// A bundle of sender keys delivered to a new member when they join.
 /// Transmitted via a pairwise ZR-encrypted message.
@@ -114,7 +114,14 @@ impl MemberManager {
         }
 
         // Also rotate our own sender chain root
-        state.rotate_sender_key(&state.members.keys().next().cloned().unwrap_or(target_id.clone()))?;
+        state.rotate_sender_key(
+            &state
+                .members
+                .keys()
+                .next()
+                .cloned()
+                .unwrap_or(target_id.clone()),
+        )?;
 
         Ok(rotations)
     }

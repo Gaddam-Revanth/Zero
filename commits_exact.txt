@@ -1,0 +1,10 @@
+771c527 fix(ci): replace deprecated rustsec action with direct cargo audit
+a87ee8f fix(ci): use official rustsec/audit-check action for more robust dependency auditing
+1fd8c7a fix(ci): correct cargo-audit binary path and permissions
+04f9c30 fix: resolve CI failures by fixing clippy errors and optimizing audit job
+550e3e9 chore: final repository cleanup of all temporary files
+3ccbaf6 docs: rewrite README, cleanup temporary files, and finalize security hardening
+ffacafd feat: complete NAT traversal stubs, mDNS discovery, and add group tests
+36b50dd Security audit and hardening: implemented zeroization, forward secrecy for group messaging, identity persistence, and authenticated handshake binding. Verified with comprehensive test suite.
+77e9d24 Remove unused decrypt import in handshake tests
+8aae569 Implement comprehensive test suite (101 tests) and fix CI security audit

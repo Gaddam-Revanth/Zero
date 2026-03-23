@@ -34,4 +34,3 @@ pub enum WireError {
     #[error("Reserved bits set in flags")]
     ReservedBitsSet,
 }
-

@@ -27,11 +27,11 @@ pub enum HandshakeError {
 
     /// Received message has wrong length.
     #[error("Message length error: expected {expected}, got {got}")]
-    MessageLength { 
+    MessageLength {
         /// Expected length of the message.
-        expected: usize, 
+        expected: usize,
         /// Actual length of the message.
-        got: usize 
+        got: usize,
     },
 
     /// Authentication failed — possible MITM.

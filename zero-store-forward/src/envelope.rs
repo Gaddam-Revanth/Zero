@@ -1,5 +1,6 @@
 //! Sealed sender envelope structure (ZSF).
 
+use crate::error::ZsfError;
 use serde::{Deserialize, Serialize};
 use zero_crypto::{
     aead::{decrypt, encrypt, AeadKey, AeadNonce},
@@ -7,7 +8,6 @@ use zero_crypto::{
     kdf::{hkdf_expand, hkdf_extract, KdfContext},
 };
 use zero_identity::zeroid::ZeroId;
-use crate::error::ZsfError;
 
 /// The outer wrapper that the ZSF relay sees.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -58,8 +58,7 @@ impl ZsfEnvelope {
             sender_ephemeral_pub: sender_ephemeral.public_key().0,
             payload,
         };
-        let inner_pt = zero_crypto::cbor::to_vec(&inner)
-            .map_err(|_| ZsfError::DecryptionFailed)?;
+        let inner_pt = zero_crypto::cbor::to_vec(&inner).map_err(|_| ZsfError::DecryptionFailed)?;
 
         let shared_inner = sender_ephemeral.diffie_hellman(recipient_idk_pub);
         let inner_key = derive_envelope_key(&shared_inner.0, &sender_ephemeral.public_key().0)?;
@@ -83,12 +82,10 @@ impl ZsfEnvelope {
         // the same shared secret and decrypt `outer_ciphertext` to read only the TTL and
         // `inner_ciphertext`, never the sender identity or payload.
         let relay_ephemeral = X25519Keypair::generate();
-        let relay_shared = relay_ephemeral
-            .diffie_hellman(relay_pub);
+        let relay_shared = relay_ephemeral.diffie_hellman(relay_pub);
         let relay_key = derive_envelope_key(&relay_shared.0, &relay_ephemeral.public_key().0)?;
         let relay_nonce = AeadNonce::random();
-        let outer_pt = zero_crypto::cbor::to_vec(&outer)
-            .map_err(|_| ZsfError::DecryptionFailed)?;
+        let outer_pt = zero_crypto::cbor::to_vec(&outer).map_err(|_| ZsfError::DecryptionFailed)?;
         let outer_ct = encrypt(&relay_key, &relay_nonce, &outer_pt, b"ZSF-outer")
             .map_err(|_| ZsfError::DecryptionFailed)?;
 
@@ -134,8 +131,13 @@ pub fn decrypt_outer_for_relay(
         .map_err(|_| ZsfError::OuterDecryptionFailed)?;
     let relay_key = derive_envelope_key(&shared.0, &env.relay_ephemeral_pub)?;
 
-    let pt = decrypt(&relay_key, &nonce, &env.outer_ciphertext[12..], b"ZSF-outer")
-        .map_err(|_| ZsfError::OuterDecryptionFailed)?;
+    let pt = decrypt(
+        &relay_key,
+        &nonce,
+        &env.outer_ciphertext[12..],
+        b"ZSF-outer",
+    )
+    .map_err(|_| ZsfError::OuterDecryptionFailed)?;
 
     zero_crypto::cbor::from_slice(&pt).map_err(|e| ZsfError::SerializationError(e.to_string()))
 }
@@ -145,7 +147,9 @@ pub fn decrypt_inner(
     recipient_idk: &X25519SecretKey,
     inner_ct: &[u8],
 ) -> Result<SealedSenderInner, ZsfError> {
-    if inner_ct.len() < 12 { return Err(ZsfError::DecryptionFailed); }
+    if inner_ct.len() < 12 {
+        return Err(ZsfError::DecryptionFailed);
+    }
 
     // Read nonce
     let mut nonce_bytes = [0u8; 12];
@@ -156,7 +160,9 @@ pub fn decrypt_inner(
     // In a full sealed sender, the ephemeral pubkey is outside the inner ciphertext.
     // Here we assume it's prepended or sent out of band (omitted for brevity).
     // Let's assume the payload format is: [nonce 12][ephemeral pub 32][ct...]
-    if inner_ct.len() < 44 { return Err(ZsfError::DecryptionFailed); }
+    if inner_ct.len() < 44 {
+        return Err(ZsfError::DecryptionFailed);
+    }
     let mut ephem_bytes = [0u8; 32];
     ephem_bytes.copy_from_slice(&inner_ct[12..44]);
     let sender_ephemeral_pub = X25519PublicKey(ephem_bytes);
@@ -173,7 +179,8 @@ pub fn decrypt_inner(
 
 fn derive_envelope_key(shared: &[u8], ephem: &[u8]) -> Result<AeadKey, ZsfError> {
     let prk = hkdf_extract(ephem, shared);
-    let key = hkdf_expand(&prk, KdfContext::ZsfEnvelopeKey, 32).map_err(|_| ZsfError::DecryptionFailed)?;
+    let key = hkdf_expand(&prk, KdfContext::ZsfEnvelopeKey, 32)
+        .map_err(|_| ZsfError::DecryptionFailed)?;
     let mut arr = [0u8; 32];
     arr.copy_from_slice(&key);
     Ok(AeadKey(arr))

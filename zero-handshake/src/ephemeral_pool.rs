@@ -1,7 +1,7 @@
+use parking_lot::Mutex;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use zero_crypto::dh::X25519Keypair;
-use parking_lot::Mutex;
 
 /// A background pool for pre-generating X25519 keypairs.
 /// This removes the ~0.7-1ms cost of key generation from the active handshake path.
@@ -14,7 +14,7 @@ impl EphemeralKeyPool {
     /// Create a new pool with the given capacity.
     pub fn new(capacity: usize) -> Arc<Self> {
         let (sender, receiver) = mpsc::channel(capacity);
-        
+
         // Spawn background task to keep the pool full
         let handle = tokio::spawn(async move {
             loop {
@@ -42,12 +42,13 @@ impl EphemeralKeyPool {
 }
 
 /// Global ephemeral key pool lazy initializer.
-pub static GLOBAL_POOL_ONCE: tokio::sync::OnceCell<Arc<EphemeralKeyPool>> = tokio::sync::OnceCell::const_new();
+pub static GLOBAL_POOL_ONCE: tokio::sync::OnceCell<Arc<EphemeralKeyPool>> =
+    tokio::sync::OnceCell::const_new();
 
 /// Get a keypair from the global pool.
 pub async fn get_ephemeral() -> X25519Keypair {
-    let pool = GLOBAL_POOL_ONCE.get_or_init(|| async {
-        EphemeralKeyPool::new(32)
-    }).await;
+    let pool = GLOBAL_POOL_ONCE
+        .get_or_init(|| async { EphemeralKeyPool::new(32) })
+        .await;
     pool.get()
 }

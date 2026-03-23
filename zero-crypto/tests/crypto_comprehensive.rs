@@ -3,7 +3,7 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod aead_tests {
-    use zero_crypto::aead::{encrypt, decrypt, AeadKey, AeadNonce, AEAD_KEY_SIZE};
+    use zero_crypto::aead::{decrypt, encrypt, AeadKey, AeadNonce, AEAD_KEY_SIZE};
 
     fn random_key() -> AeadKey {
         use rand::RngCore;
@@ -29,7 +29,10 @@ mod aead_tests {
         let key2 = random_key();
         let nonce = AeadNonce::random();
         let ct = encrypt(&key1, &nonce, b"secret", b"").unwrap();
-        assert!(decrypt(&key2, &nonce, &ct, b"").is_err(), "Wrong key must fail decryption");
+        assert!(
+            decrypt(&key2, &nonce, &ct, b"").is_err(),
+            "Wrong key must fail decryption"
+        );
     }
 
     #[test]
@@ -38,7 +41,10 @@ mod aead_tests {
         let nonce = AeadNonce::random();
         let mut ct = encrypt(&key, &nonce, b"sensitive data", b"ad").unwrap();
         ct[0] ^= 0xFF; // Flip all bits in first byte
-        assert!(decrypt(&key, &nonce, &ct, b"ad").is_err(), "Tampered ciphertext must fail");
+        assert!(
+            decrypt(&key, &nonce, &ct, b"ad").is_err(),
+            "Tampered ciphertext must fail"
+        );
     }
 
     #[test]
@@ -48,7 +54,10 @@ mod aead_tests {
         let mut ct = encrypt(&key, &nonce, b"msg", b"").unwrap();
         let last = ct.len() - 1;
         ct[last] ^= 0x01; // Corrupt the last byte (part of the Poly1305 tag)
-        assert!(decrypt(&key, &nonce, &ct, b"").is_err(), "Tampered tag must fail");
+        assert!(
+            decrypt(&key, &nonce, &ct, b"").is_err(),
+            "Tampered tag must fail"
+        );
     }
 
     #[test]
@@ -109,14 +118,17 @@ mod aead_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod sign_tests {
-    use zero_crypto::sign::{Ed25519Keypair, Ed25519Signature, ed25519_sign, ed25519_verify};
+    use zero_crypto::sign::{ed25519_sign, ed25519_verify, Ed25519Keypair, Ed25519Signature};
 
     #[test]
     fn test_sign_verify_roundtrip() {
         let kp = Ed25519Keypair::generate();
         let msg = b"ZERO protocol message";
         let sig = kp.sign(msg);
-        assert!(kp.verify(msg, &sig).is_ok(), "Signature must verify with correct key");
+        assert!(
+            kp.verify(msg, &sig).is_ok(),
+            "Signature must verify with correct key"
+        );
     }
 
     #[test]
@@ -125,7 +137,10 @@ mod sign_tests {
         let kp2 = Ed25519Keypair::generate();
         let msg = b"message";
         let sig = kp1.sign(msg);
-        assert!(kp2.verify(msg, &sig).is_err(), "Verification with wrong key must fail");
+        assert!(
+            kp2.verify(msg, &sig).is_err(),
+            "Verification with wrong key must fail"
+        );
     }
 
     #[test]
@@ -133,7 +148,10 @@ mod sign_tests {
         let kp = Ed25519Keypair::generate();
         let msg = b"original";
         let sig = kp.sign(msg);
-        assert!(kp.verify(b"tampered", &sig).is_err(), "Tampered message must fail verification");
+        assert!(
+            kp.verify(b"tampered", &sig).is_err(),
+            "Tampered message must fail verification"
+        );
     }
 
     #[test]
@@ -141,7 +159,10 @@ mod sign_tests {
         let kp = Ed25519Keypair::generate();
         let msg = b"message";
         let short_sig = Ed25519Signature(vec![0u8; 10]); // way too short
-        assert!(kp.verify(msg, &short_sig).is_err(), "Truncated signature must fail");
+        assert!(
+            kp.verify(msg, &short_sig).is_err(),
+            "Truncated signature must fail"
+        );
     }
 
     #[test]
@@ -169,7 +190,7 @@ mod sign_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod dh_tests {
-    use zero_crypto::dh::{X25519Keypair, x25519_diffie_hellman};
+    use zero_crypto::dh::{x25519_diffie_hellman, X25519Keypair};
 
     #[test]
     fn test_dh_symmetry() {
@@ -187,14 +208,17 @@ mod dh_tests {
         let c = X25519Keypair::generate();
         let ss_ab = x25519_diffie_hellman(&a.secret_key(), &b.public_key()).unwrap();
         let ss_ac = x25519_diffie_hellman(&a.secret_key(), &c.public_key()).unwrap();
-        assert_ne!(ss_ab.0, ss_ac.0, "Different partners must produce different shared secrets");
+        assert_ne!(
+            ss_ab.0, ss_ac.0,
+            "Different partners must produce different shared secrets"
+        );
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod kdf_tests {
-    use zero_crypto::kdf::{hkdf_extract, hkdf_expand, hkdf, KdfContext};
+    use zero_crypto::kdf::{hkdf, hkdf_expand, hkdf_extract, KdfContext};
 
     #[test]
     fn test_hkdf_deterministic() {
@@ -218,7 +242,10 @@ mod kdf_tests {
         let prk = hkdf_extract(b"salt", b"ikm");
         let out1 = hkdf_expand(&prk, KdfContext::ZrSendChain, 32).unwrap();
         let out2 = hkdf_expand(&prk, KdfContext::ZrRecvChain, 32).unwrap();
-        assert_ne!(out1, out2, "Different contexts must produce different output");
+        assert_ne!(
+            out1, out2,
+            "Different contexts must produce different output"
+        );
     }
 
     #[test]

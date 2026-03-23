@@ -4,16 +4,17 @@
 //! Exposes a stable UniFFI interface for Android/Kotlin integration.
 
 #![deny(missing_docs)]
+#![allow(clippy::empty_line_after_doc_comments)]
 
 pub mod api;
-pub mod error;
 pub mod discovery;
-pub mod zft;
-pub mod zav;
+pub mod error;
 pub mod nat;
 pub mod persistence;
+pub mod zav;
+pub mod zft;
 
-pub use api::{init_logger, ZeroNode, ZeroContact};
+pub use api::{init_logger, ZeroContact, ZeroNode};
 pub use error::ZeroError;
 
 // Initialize UniFFI macros

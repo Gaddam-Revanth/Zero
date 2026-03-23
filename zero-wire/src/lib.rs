@@ -23,4 +23,3 @@ pub use error::WireError;
 pub use header::{Packet, PacketHeader};
 pub use replay::{ReplayCache, ReplayToken};
 pub use types::{PacketFlags, PacketType, Version};
-

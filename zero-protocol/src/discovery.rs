@@ -1,11 +1,11 @@
 //! LAN Discovery using mDNS-SD.
 #![allow(missing_docs)]
 
-use mdns_sd::{ServiceDaemon, ServiceInfo, ServiceEvent};
+use crate::error::ZeroError;
+use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use tracing::info;
-use crate::error::ZeroError;
 
 pub const ZERO_SERVICE_TYPE: &str = "_zero-protocol._udp.local.";
 
@@ -26,7 +26,12 @@ impl DiscoveryManager {
     }
 
     /// Register local node on mDNS.
-    pub fn register_service(&self, node_id: &str, port: u16, addresses: Vec<IpAddr>) -> Result<(), ZeroError> {
+    pub fn register_service(
+        &self,
+        node_id: &str,
+        port: u16,
+        addresses: Vec<IpAddr>,
+    ) -> Result<(), ZeroError> {
         let mut properties = HashMap::new();
         properties.insert("node_id".to_string(), node_id.to_string());
         properties.insert("v".to_string(), "1.0".to_string());
@@ -39,16 +44,22 @@ impl DiscoveryManager {
             &addresses[..],
             port,
             Some(properties),
-        ).map_err(|e| ZeroError::Custom(e.to_string()))?;
+        )
+        .map_err(|e| ZeroError::Custom(e.to_string()))?;
 
-        self.mdns.register(service_info).map_err(|e| ZeroError::Custom(e.to_string()))?;
+        self.mdns
+            .register(service_info)
+            .map_err(|e| ZeroError::Custom(e.to_string()))?;
         info!("Registered ZERO service mDNS: {} on port {}", node_id, port);
         Ok(())
     }
 
     /// Browse for other ZERO services on LAN.
     pub fn start_browsing(&self) -> Result<mdns_sd::Receiver<ServiceEvent>, ZeroError> {
-        let receiver = self.mdns.browse(self.service_type).map_err(|e| ZeroError::Custom(format!("{:?}", e)))?;
+        let receiver = self
+            .mdns
+            .browse(self.service_type)
+            .map_err(|e| ZeroError::Custom(format!("{:?}", e)))?;
         info!("Started mDNS browsing for {}", self.service_type);
         Ok(receiver)
     }

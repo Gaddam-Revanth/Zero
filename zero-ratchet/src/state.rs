@@ -6,12 +6,12 @@ use crate::{
     skipped_keys::SkippedKeyCache,
 };
 use serde::{Deserialize, Serialize};
-use zeroize::{Zeroize, ZeroizeOnDrop};
 use zero_crypto::{
     aead::{decrypt, encrypt, AeadKey, AeadNonce},
-    dh::{X25519Keypair, X25519PublicKey, X25519SecretKey, x25519_diffie_hellman},
-    kdf::{hkdf_extract, hkdf_expand, KdfContext},
+    dh::{x25519_diffie_hellman, X25519Keypair, X25519PublicKey, X25519SecretKey},
+    kdf::{hkdf_expand, hkdf_extract, KdfContext},
 };
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Maximum messages to skip before treating as attack.
 const MAX_SKIP: usize = 1000;
@@ -163,7 +163,8 @@ impl RatchetSession {
     /// This provides ongoing post-quantum forward secrecy.
     pub fn pq_ratchet_step(&mut self, kem_shared_secret: &[u8; 32]) -> Result<(), RatchetError> {
         let prk = hkdf_extract(&self.rk, kem_shared_secret);
-        self.rk = hkdf_expand(&prk, KdfContext::ZrRootChain, 64).map_err(|_| RatchetError::KdfError)?;
+        self.rk =
+            hkdf_expand(&prk, KdfContext::ZrRootChain, 64).map_err(|_| RatchetError::KdfError)?;
         Ok(())
     }
 
@@ -172,56 +173,69 @@ impl RatchetSession {
         self.ns = 0;
         self.nr = 0;
         self.dhr = Some(remote_pub.clone());
-        
+
         let shared = x25519_diffie_hellman(&self.dhs_secret, remote_pub)
             .map_err(|_| RatchetError::DhFailed)?;
-            
+
         let (new_rk, ck_pair) = kdf_rk(&self.rk, &shared.0)?;
         self.rk = new_rk;
         // After a DH ratchet step, we create a new sending chain.
         // (Receiving chain will be derived when processing messages from the remote side.)
         self.cks = Some(ck_pair.0);
-        
+
         // Generate new local DH key
         let kp = X25519Keypair::generate();
         self.dhs_secret = kp.secret_key();
         self.dhs_pub = kp.public_key();
-        
+
         // Update header keys
         self.hks = self.nhks.clone();
         self.hkr = self.nhkr.clone();
-        
+
         let nh_shared = x25519_diffie_hellman(&self.dhs_secret, remote_pub)
             .map_err(|_| RatchetError::DhFailed)?;
         let prk = hkdf_extract(&self.rk, &nh_shared.0);
-        self.nhks = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-v1-nhks"), 32).map_err(|_| RatchetError::KdfError)?;
-        self.nhkr = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-v1-nhkr"), 32).map_err(|_| RatchetError::KdfError)?;
-        
+        self.nhks = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-v1-nhks"), 32)
+            .map_err(|_| RatchetError::KdfError)?;
+        self.nhkr = hkdf_expand(&prk, KdfContext::Custom("ZERO-ZR-v1-nhkr"), 32)
+            .map_err(|_| RatchetError::KdfError)?;
+
         Ok(())
     }
 
     /// Encrypt a message using the current sending chain.
-    pub fn encrypt(&mut self, plaintext: &[u8], associated_data: &[u8]) -> Result<RatchetMessage, RatchetError> {
+    pub fn encrypt(
+        &mut self,
+        plaintext: &[u8],
+        associated_data: &[u8],
+    ) -> Result<RatchetMessage, RatchetError> {
         let (new_cks, mk) = kdf_ck(self.cks.as_ref().ok_or(RatchetError::EncryptionFailed)?)?;
         self.cks = Some(new_cks);
-        
+
         let hdr = DecryptedHeader {
             dh_pub: self.dhs_pub.clone(),
             prev_counter: self.pn,
             counter: self.ns,
         };
         self.ns += 1;
-        
-        let hks_arr: [u8; 32] = self.hks.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
+
+        let hks_arr: [u8; 32] = self
+            .hks
+            .as_slice()
+            .try_into()
+            .map_err(|_| RatchetError::KdfError)?;
         let enc_hdr = encrypt_header(&AeadKey(hks_arr), &hdr)?;
-        
+
         let mut aad = associated_data.to_vec();
         aad.extend_from_slice(&enc_hdr.0);
-        
+
         let nonce = AeadNonce::random();
         let mut ct_with_nonce = nonce.0.to_vec();
-        
-        let mk_arr: [u8; 32] = mk.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
+
+        let mk_arr: [u8; 32] = mk
+            .as_slice()
+            .try_into()
+            .map_err(|_| RatchetError::KdfError)?;
         let ct = encrypt(&AeadKey(mk_arr), &nonce, plaintext, &aad)
             .map_err(|_| RatchetError::EncryptionFailed)?;
         ct_with_nonce.extend_from_slice(&ct);
@@ -239,7 +253,11 @@ impl RatchetSession {
         associated_data: &[u8],
         now_secs: u64,
     ) -> Result<Vec<u8>, RatchetError> {
-        let hkr_arr: [u8; 32] = self.hkr.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
+        let hkr_arr: [u8; 32] = self
+            .hkr
+            .as_slice()
+            .try_into()
+            .map_err(|_| RatchetError::KdfError)?;
         if let Ok(hdr) = decrypt_header(&AeadKey(hkr_arr), &msg.header) {
             if let Some(mk) = self.skipped.take(&hdr.dh_pub, hdr.counter) {
                 return self.decrypt_with_key(&mk, msg, associated_data);
@@ -248,11 +266,18 @@ impl RatchetSession {
             let (new_ckr, mk) = kdf_ck(self.ckr.as_ref().ok_or(RatchetError::DecryptionFailed)?)?;
             self.ckr = Some(new_ckr);
             self.nr += 1;
-            let mk_arr: [u8; 32] = mk.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
+            let mk_arr: [u8; 32] = mk
+                .as_slice()
+                .try_into()
+                .map_err(|_| RatchetError::KdfError)?;
             return self.decrypt_with_key(&mk_arr, msg, associated_data);
         }
 
-        let nhkr_arr: [u8; 32] = self.nhkr.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
+        let nhkr_arr: [u8; 32] = self
+            .nhkr
+            .as_slice()
+            .try_into()
+            .map_err(|_| RatchetError::KdfError)?;
         if let Ok(hdr) = decrypt_header(&AeadKey(nhkr_arr), &msg.header) {
             if let Some(ref _ckr) = self.ckr {
                 let dhr = self.dhr.clone().ok_or(RatchetError::DecryptionFailed)?;
@@ -263,7 +288,10 @@ impl RatchetSession {
             let (new_ckr, mk) = kdf_ck(self.ckr.as_ref().ok_or(RatchetError::DecryptionFailed)?)?;
             self.ckr = Some(new_ckr);
             self.nr += 1;
-            let mk_arr: [u8; 32] = mk.as_slice().try_into().map_err(|_| RatchetError::KdfError)?;
+            let mk_arr: [u8; 32] = mk
+                .as_slice()
+                .try_into()
+                .map_err(|_| RatchetError::KdfError)?;
             return self.decrypt_with_key(&mk_arr, msg, associated_data);
         }
 
@@ -277,19 +305,28 @@ impl RatchetSession {
         associated_data: &[u8],
     ) -> Result<Vec<u8>, RatchetError> {
         let ct = &msg.ciphertext;
-        if ct.len() < 12 { return Err(RatchetError::DecryptionFailed); }
+        if ct.len() < 12 {
+            return Err(RatchetError::DecryptionFailed);
+        }
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes.copy_from_slice(&ct[..12]);
         let nonce = AeadNonce(nonce_bytes);
         let mut aad = associated_data.to_vec();
         aad.extend_from_slice(&msg.header.0);
-        decrypt(&AeadKey(*mk), &nonce, &ct[12..], &aad)
-            .map_err(|_| RatchetError::DecryptionFailed)
+        decrypt(&AeadKey(*mk), &nonce, &ct[12..], &aad).map_err(|_| RatchetError::DecryptionFailed)
     }
 
-    fn skip_message_keys(&mut self, until: u32, dh_pub: &X25519PublicKey, now: u64) -> Result<(), RatchetError> {
+    fn skip_message_keys(
+        &mut self,
+        until: u32,
+        dh_pub: &X25519PublicKey,
+        now: u64,
+    ) -> Result<(), RatchetError> {
         if self.nr + (MAX_SKIP as u32) < until {
-            return Err(RatchetError::TooManySkippedKeys { skipped: (until - self.nr) as usize, max: MAX_SKIP });
+            return Err(RatchetError::TooManySkippedKeys {
+                skipped: (until - self.nr) as usize,
+                max: MAX_SKIP,
+            });
         }
         if let Some(ref mut ckr) = self.ckr {
             while self.nr < until {
@@ -310,8 +347,10 @@ type KdfRkResult = (Vec<u8>, (Vec<u8>, Vec<u8>));
 fn kdf_rk(rk: &[u8], dh_shared: &[u8]) -> Result<KdfRkResult, RatchetError> {
     let prk = hkdf_extract(rk, dh_shared);
     let rk = hkdf_expand(&prk, KdfContext::ZrRootChain, 64).map_err(|_| RatchetError::KdfError)?;
-    let ck_send = hkdf_expand(&prk, KdfContext::ZrSendChain, 32).map_err(|_| RatchetError::KdfError)?;
-    let ck_recv = hkdf_expand(&prk, KdfContext::ZrRecvChain, 32).map_err(|_| RatchetError::KdfError)?;
+    let ck_send =
+        hkdf_expand(&prk, KdfContext::ZrSendChain, 32).map_err(|_| RatchetError::KdfError)?;
+    let ck_recv =
+        hkdf_expand(&prk, KdfContext::ZrRecvChain, 32).map_err(|_| RatchetError::KdfError)?;
     Ok((rk, (ck_send, ck_recv)))
 }
 

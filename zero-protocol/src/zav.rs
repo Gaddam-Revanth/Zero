@@ -24,11 +24,11 @@ impl ZavSignal {
     /// Extract the call_id from any signal variant.
     pub fn call_id(&self) -> &str {
         match self {
-            ZavSignal::Invite   { call_id, .. } => call_id,
-            ZavSignal::Accept   { call_id, .. } => call_id,
-            ZavSignal::Reject   { call_id, .. } => call_id,
+            ZavSignal::Invite { call_id, .. } => call_id,
+            ZavSignal::Accept { call_id, .. } => call_id,
+            ZavSignal::Reject { call_id, .. } => call_id,
             ZavSignal::IceCandidate { call_id, .. } => call_id,
-            ZavSignal::Hangup   { call_id, .. } => call_id,
+            ZavSignal::Hangup { call_id, .. } => call_id,
         }
     }
 }
@@ -38,31 +38,46 @@ pub struct ZavManager;
 
 impl ZavManager {
     /// Create a new ZAV call manager.
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// Create an SDP Invite signal (caller → callee).
     pub fn create_invite(&self, call_id: &str, sdp: &str) -> ZavSignal {
-        ZavSignal::Invite { call_id: call_id.to_string(), sdp: sdp.to_string() }
+        ZavSignal::Invite {
+            call_id: call_id.to_string(),
+            sdp: sdp.to_string(),
+        }
     }
 
     /// Create an SDP Accept signal (callee → caller), completing the WebRTC handshake.
     pub fn create_accept(&self, call_id: &str, answer_sdp: &str) -> ZavSignal {
-        ZavSignal::Accept { call_id: call_id.to_string(), sdp: answer_sdp.to_string() }
+        ZavSignal::Accept {
+            call_id: call_id.to_string(),
+            sdp: answer_sdp.to_string(),
+        }
     }
 
     /// Create a Reject signal if the callee declines.
     pub fn create_reject(&self, call_id: &str) -> ZavSignal {
-        ZavSignal::Reject { call_id: call_id.to_string() }
+        ZavSignal::Reject {
+            call_id: call_id.to_string(),
+        }
     }
 
     /// Create an ICE candidate signal to assist NAT traversal.
     pub fn create_ice_candidate(&self, call_id: &str, candidate: &str) -> ZavSignal {
-        ZavSignal::IceCandidate { call_id: call_id.to_string(), candidate: candidate.to_string() }
+        ZavSignal::IceCandidate {
+            call_id: call_id.to_string(),
+            candidate: candidate.to_string(),
+        }
     }
 
     /// Create a Hangup signal to end the call.
     pub fn create_hangup(&self, call_id: &str) -> ZavSignal {
-        ZavSignal::Hangup { call_id: call_id.to_string() }
+        ZavSignal::Hangup {
+            call_id: call_id.to_string(),
+        }
     }
 
     /// Serialize any signal to CBOR bytes for transport over ZR or ZSF.
@@ -77,5 +92,7 @@ impl ZavManager {
 }
 
 impl Default for ZavManager {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

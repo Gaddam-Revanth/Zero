@@ -1,13 +1,13 @@
 //! ZERO ID keypair — all long-term keys for one identity.
 
 use crate::error::IdentityError;
+use serde::{Deserialize, Serialize};
 use zero_crypto::{
     dh::{X25519Keypair, X25519PublicKey},
     hash::blake2b_256,
     kem::{MlKem768EncapsKey, MlKem768Keypair},
     sign::{Ed25519Keypair, Ed25519PublicKey},
 };
-use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// The complete long-term keypair for one ZERO identity.
@@ -26,8 +26,8 @@ impl ZeroKeypair {
     pub fn generate() -> Result<Self, IdentityError> {
         let isk = Ed25519Keypair::generate();
         let idk = X25519Keypair::generate();
-        let pq_isk = MlKem768Keypair::generate()
-            .map_err(|e| IdentityError::CryptoError(e.to_string()))?;
+        let pq_isk =
+            MlKem768Keypair::generate().map_err(|e| IdentityError::CryptoError(e.to_string()))?;
         Ok(Self { isk, idk, pq_isk })
     }
 

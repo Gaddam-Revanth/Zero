@@ -7,9 +7,9 @@ use crate::{
     zeroid::ZeroId,
 };
 use serde::{Deserialize, Serialize};
-use zeroize::{Zeroize, ZeroizeOnDrop};
 use zero_crypto::dh::X25519PublicKey;
 use zero_crypto::sign::Ed25519PublicKey;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Public key bundle published to ZDHT. Alice fetches this to initiate ZKX with Bob.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -35,11 +35,15 @@ impl KeyBundle {
     pub fn verify(&self) -> Result<(), IdentityError> {
         let id_comp = self.zero_id.components();
         if self.isk_pub.0 != id_comp.isk_pub || self.idk_pub.0 != id_comp.idk_pub {
-            return Err(IdentityError::CryptoError("Bundle keys do not match ZeroId".into()));
+            return Err(IdentityError::CryptoError(
+                "Bundle keys do not match ZeroId".into(),
+            ));
         }
         let pq_hash = zero_crypto::hash::blake2b_256(&self.pq_isk_pub);
         if pq_hash[..4] != id_comp.pq_hash {
-            return Err(IdentityError::CryptoError("PQ ISK hash does not match ZeroId".into()));
+            return Err(IdentityError::CryptoError(
+                "PQ ISK hash does not match ZeroId".into(),
+            ));
         }
 
         zero_crypto::sign::ed25519_verify(
@@ -52,12 +56,14 @@ impl KeyBundle {
 
     /// Serialize to CBOR bytes for DHT storage.
     pub fn to_cbor(&self) -> Result<Vec<u8>, IdentityError> {
-        zero_crypto::cbor::to_vec(self).map_err(|e| IdentityError::SerializationError(e.to_string()))
+        zero_crypto::cbor::to_vec(self)
+            .map_err(|e| IdentityError::SerializationError(e.to_string()))
     }
 
     /// Deserialize from CBOR bytes.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, IdentityError> {
-        zero_crypto::cbor::from_slice(bytes).map_err(|e| IdentityError::SerializationError(e.to_string()))
+        zero_crypto::cbor::from_slice(bytes)
+            .map_err(|e| IdentityError::SerializationError(e.to_string()))
     }
 }
 
@@ -101,10 +107,14 @@ impl OwnedKeyBundle {
 
     /// Build a public KeyBundle from this owned bundle, consuming one OPK.
     pub fn public_bundle(&mut self, zero_id: &ZeroId) -> KeyBundle {
-        let opk = self.opks.iter().find(|o| !o.consumed).map(|o| OneTimePrekeyPublic {
-            index: o.index,
-            public_key: o.public_key.clone(),
-        });
+        let opk = self
+            .opks
+            .iter()
+            .find(|o| !o.consumed)
+            .map(|o| OneTimePrekeyPublic {
+                index: o.index,
+                public_key: o.public_key.clone(),
+            });
 
         KeyBundle {
             zero_id: zero_id.clone(),
@@ -119,11 +129,14 @@ impl OwnedKeyBundle {
 
     /// Rotate the signed prekey (call every 7 days).
     pub fn rotate_spk(&mut self, now: u64) {
-        let old_spk = std::mem::replace(&mut self.current_spk, SignedPrekey::generate(self.spk_index + 1, &self.keypair.isk));
+        let old_spk = std::mem::replace(
+            &mut self.current_spk,
+            SignedPrekey::generate(self.spk_index + 1, &self.keypair.isk),
+        );
         self.old_spks.insert(self.spk_index, old_spk);
         self.spk_index += 1;
         self.spk_created_at = now;
-        
+
         // Prune old SPKs (keep only last 10)
         if self.old_spks.len() > 10 {
             let min_index = self.old_spks.keys().min().copied().unwrap_or_default();
